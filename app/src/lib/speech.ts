@@ -1,11 +1,19 @@
 "use client";
 
-export function speakGerman(text: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
+export function speakGerman(text: string, callbacks?: { onStart?: () => void; onEnd?: () => void }) {
+  if (typeof window === "undefined" || !window.speechSynthesis) {
+    callbacks?.onEnd?.();
+    return;
+  }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "de-DE";
   utterance.rate = 0.9;
+  if (callbacks?.onStart) utterance.onstart = callbacks.onStart;
+  if (callbacks?.onEnd) {
+    utterance.onend = callbacks.onEnd;
+    utterance.onerror = callbacks.onEnd;
+  }
   window.speechSynthesis.speak(utterance);
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { isSpeechRecognitionSupported, listenOnce, speakGerman } from "@/lib/speech";
 import { isCloseEnough } from "@/lib/text-match";
+import { TalkingCharacter } from "@/components/talking-character";
 
 interface Props {
   targetText: string;
@@ -15,15 +16,21 @@ export function SpeakExercise({ targetText, hintEn, onResult }: Props) {
   const [heard, setHeard] = useState("");
   const [correct, setCorrect] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [speaking, setSpeaking] = useState(false);
   const supported = isSpeechRecognitionSupported();
+
+  function playTarget() {
+    speakGerman(targetText, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) });
+  }
 
   // play automatically whenever a new item is shown, not just on manual click
   useEffect(() => {
-    speakGerman(targetText);
+    playTarget();
     setStatus("idle");
     setHeard("");
     setCorrect(null);
     setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetText]);
 
   async function record() {
@@ -53,15 +60,11 @@ export function SpeakExercise({ targetText, hintEn, onResult }: Props) {
     <div className="space-y-6">
       <div className="text-center">
         <p className="text-sm text-neutral-400">Say this out loud in German</p>
-        {hintEn && <p className="mt-1 text-sm text-neutral-500">{hintEn}</p>}
+        <div className="mt-3">
+          <TalkingCharacter speaking={speaking} onClick={playTarget} label="Hear it first" />
+        </div>
+        {hintEn && <p className="mt-2 text-sm text-neutral-500">{hintEn}</p>}
         <p className="mt-3 text-2xl font-semibold text-neutral-50">{targetText}</p>
-        <button
-          type="button"
-          onClick={() => speakGerman(targetText)}
-          className="mt-2 text-sm text-blue-400 hover:underline"
-        >
-          🔊 Hear it first
-        </button>
       </div>
 
       {supported ? (

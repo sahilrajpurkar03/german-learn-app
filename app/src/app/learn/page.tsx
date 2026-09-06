@@ -13,10 +13,11 @@ export default async function LearnPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("placement_completed")
+    .select("placement_completed, next_checkin_at")
     .eq("id", user.id)
     .single();
   if (!profile?.placement_completed) redirect("/learn/placement");
+  if (profile.next_checkin_at && new Date(profile.next_checkin_at) <= new Date()) redirect("/learn/checkin");
 
   const stats = await getDashboardStats(user.id);
 

@@ -20,6 +20,7 @@ export interface Database {
           last_active_date: string | null;
           daily_goal_minutes: number;
           placement_completed: boolean;
+          next_checkin_at: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & { id: string };
