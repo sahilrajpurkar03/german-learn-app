@@ -1,0 +1,27 @@
+# Python virtual environment
+.venv/
+
+# OCR language data (downloaded separately, not source)
+.tessdata/
+
+# Source textbook scans (copyrighted material, not to be committed)
+source/
+
+# Node
+node_modules/
+
+# Env files / secrets
+.env
+.env.local
+.env*.local
+
+# Build output
+.next/
+out/
+build/
+.vercel/
+
+# Misc
+*.tsbuildinfo
+.DS_Store
+npm-debug.log*
