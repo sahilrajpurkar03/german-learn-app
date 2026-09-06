@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { speakGerman } from "@/lib/speech";
 import { isCloseEnough } from "@/lib/text-match";
 
@@ -13,6 +13,13 @@ interface Props {
 export function ListenTypeExercise({ targetText, hintEn, onResult }: Props) {
   const [value, setValue] = useState("");
   const [checked, setChecked] = useState<null | boolean>(null);
+
+  // play automatically whenever a new item is shown, not just on manual click
+  useEffect(() => {
+    speakGerman(targetText);
+    setValue("");
+    setChecked(null);
+  }, [targetText]);
 
   function replay() {
     speakGerman(targetText);

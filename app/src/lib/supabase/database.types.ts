@@ -19,6 +19,7 @@ export interface Database {
           streak_longest: number;
           last_active_date: string | null;
           daily_goal_minutes: number;
+          placement_completed: boolean;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & { id: string };

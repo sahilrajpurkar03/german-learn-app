@@ -27,6 +27,14 @@ export type SessionItem = VocabSessionItem | PhraseSessionItem;
 
 const SESSION_SIZE = 12;
 const DUE_RATIO = 0.7; // prioritise items due for review over brand-new ones
+const LEVELS: Level[] = ["a1", "a2", "b1"];
+
+// content isn't gated to a single level bucket: everything up to the learner's
+// placement level is in play, so practice feels like real-life German, not a course ladder
+function unlockedLevels(level: Level): Level[] {
+  const idx = LEVELS.indexOf(level);
+  return LEVELS.slice(0, idx + 1);
+}
 
 function pickExerciseForVocab(): ExerciseKind {
   return Math.random() < 0.6 ? "mcq" : "listen_type";
@@ -79,9 +87,9 @@ export async function buildSession(userId: string, level: Level): Promise<Sessio
     duePhraseIds.length
       ? supabase.from("phrases").select("*").in("id", duePhraseIds)
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
-    supabase.from("vocab_items").select("*").eq("level", level).limit(50),
-    supabase.from("phrases").select("*").eq("level", level).limit(50),
-    supabase.from("vocab_items").select("id, translation_en").eq("level", level).limit(100),
+    supabase.from("vocab_items").select("*").in("level", unlockedLevels(level)).limit(50),
+    supabase.from("phrases").select("*").in("level", unlockedLevels(level)).limit(50),
+    supabase.from("vocab_items").select("id, translation_en").in("level", unlockedLevels(level)).limit(100),
   ]);
 
   const newVocab = (newVocabRows.data ?? []).filter((v) => !seenVocabIds.has(v.id as string));
@@ -128,6 +136,46 @@ export async function buildSession(userId: string, level: Level): Promise<Sessio
   });
 
   return shuffle([...vocabItems, ...phraseItems]).slice(0, SESSION_SIZE);
+}
+
+export interface PlacementQuestion {
+  id: string;
+  level: Level;
+  lemma: string;
+  translationEn: string;
+  options: string[];
+}
+
+const PLACEMENT_PER_LEVEL = 4;
+
+// a short mixed-level quiz used once, right after signup, to pick a starting level
+export async function getPlacementQuestions(): Promise<PlacementQuestion[]> {
+  const supabase = await createClient();
+
+  const rows = await Promise.all(
+    LEVELS.map((level) =>
+      supabase.from("vocab_items").select("id, lemma, translation_en").eq("level", level).limit(30),
+    ),
+  );
+
+  const pool = rows.flatMap((r) => r.data ?? []).map((v) => v.translation_en as string);
+
+  const questions: PlacementQuestion[] = [];
+  LEVELS.forEach((level, i) => {
+    const picked = shuffle(rows[i].data ?? []).slice(0, PLACEMENT_PER_LEVEL);
+    for (const item of picked) {
+      const distractors = shuffle(pool.filter((t) => t !== item.translation_en)).slice(0, 3);
+      questions.push({
+        id: item.id,
+        level,
+        lemma: item.lemma,
+        translationEn: item.translation_en,
+        options: shuffle([item.translation_en, ...distractors]),
+      });
+    }
+  });
+
+  return shuffle(questions);
 }
 
 export interface DashboardStats {

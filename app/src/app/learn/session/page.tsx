@@ -12,7 +12,12 @@ export default async function SessionPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("current_level").eq("id", user.id).single();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_level, placement_completed")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.placement_completed) redirect("/learn/placement");
   const level = (profile?.current_level as Level) ?? "a1";
 
   const [items, sessionId] = await Promise.all([buildSession(user.id, level), startSession("mixed")]);

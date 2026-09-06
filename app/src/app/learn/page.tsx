@@ -11,6 +11,13 @@ export default async function LearnPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("placement_completed")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.placement_completed) redirect("/learn/placement");
+
   const stats = await getDashboardStats(user.id);
 
   return (

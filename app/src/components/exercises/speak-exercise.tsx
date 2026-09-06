@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isSpeechRecognitionSupported, listenOnce, speakGerman } from "@/lib/speech";
 import { isCloseEnough } from "@/lib/text-match";
 
@@ -16,6 +16,15 @@ export function SpeakExercise({ targetText, hintEn, onResult }: Props) {
   const [correct, setCorrect] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supported = isSpeechRecognitionSupported();
+
+  // play automatically whenever a new item is shown, not just on manual click
+  useEffect(() => {
+    speakGerman(targetText);
+    setStatus("idle");
+    setHeard("");
+    setCorrect(null);
+    setError(null);
+  }, [targetText]);
 
   async function record() {
     setError(null);
