@@ -147,7 +147,7 @@ export interface PlacementQuestion {
   options: string[];
 }
 
-const PLACEMENT_PER_LEVEL = 4;
+const PLACEMENT_PER_LEVEL = 6;
 const CHECKIN_INTERVAL_DAYS = 7;
 
 function toPlacementQuestion(

@@ -35,6 +35,8 @@ export default async function CheckinPage() {
       <PlacementQuiz
         questions={questions}
         heading="Progress check-in"
+        introText="Zeit für einen Check-in! Let's see how your German is coming along."
+        resultText={() => "Great work! I've updated your progress — see you again in 7 days."}
         onFinish={submitCheckin}
         onAnswer={async (q, correct) => {
           "use server";

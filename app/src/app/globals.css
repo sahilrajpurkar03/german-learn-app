@@ -24,3 +24,63 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+@keyframes mascot-talk {
+  0%, 100% { transform: scaleY(0.4) scaleX(1); }
+  50% { transform: scaleY(1) scaleX(0.85); }
+}
+
+@keyframes mascot-idle-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(-1deg); }
+}
+
+@keyframes mascot-happy {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  25% { transform: translateY(-14px) rotate(-8deg) scale(1.08); }
+  50% { transform: translateY(0) rotate(6deg) scale(1.05); }
+  75% { transform: translateY(-8px) rotate(-4deg) scale(1.06); }
+}
+
+@keyframes mascot-sad {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(-6px) rotate(-4deg); }
+  40% { transform: translateX(6px) rotate(4deg); }
+  60% { transform: translateX(-4px) rotate(-2deg); }
+  80% { transform: translateX(4px) rotate(2deg); }
+}
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes float-up-fade {
+  0% { opacity: 0; transform: translateY(6px) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1.05); }
+  75% { opacity: 1; transform: translateY(-18px) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+}
+
+@keyframes shake-x {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.animate-blink { animation: blink 4.5s infinite; transform-origin: center; }
+.animate-mascot-talk { animation: mascot-talk 0.32s ease-in-out infinite; transform-origin: center; }
+.animate-mascot-idle-bob { animation: mascot-idle-bob 2.6s ease-in-out infinite; }
+.animate-mascot-happy { animation: mascot-happy 0.7s ease-in-out; }
+.animate-mascot-sad { animation: mascot-sad 0.5s ease-in-out; }
+.animate-pop-in { animation: pop-in 0.25s ease-out; }
+.animate-float-up-fade { animation: float-up-fade 1.1s ease-out forwards; }
+.animate-shake-x { animation: shake-x 0.4s ease-in-out; }
+

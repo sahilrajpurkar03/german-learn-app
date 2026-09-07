@@ -61,7 +61,13 @@ export function SpeakExercise({ targetText, hintEn, onResult }: Props) {
       <div className="text-center">
         <p className="text-sm text-neutral-400">Say this out loud in German</p>
         <div className="mt-3">
-          <TalkingCharacter speaking={speaking} onClick={playTarget} label="Hear it first" />
+          <TalkingCharacter
+            speaking={speaking}
+            mood={status === "checked" ? (correct ? "happy" : "sad") : "idle"}
+            bubbleText={speaking ? targetText : null}
+            onClick={playTarget}
+            label="Hear it first"
+          />
         </div>
         {hintEn && <p className="mt-2 text-sm text-neutral-500">{hintEn}</p>}
         <p className="mt-3 text-2xl font-semibold text-neutral-50">{targetText}</p>
