@@ -62,6 +62,14 @@ export function AuthForm({ mode, action }: AuthFormProps) {
         />
       </div>
 
+      {!isSignup && (
+        <div className="text-right text-sm">
+          <Link href="/auth/forgot-password" className="text-blue-400 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+      )}
+
       {state?.error && (
         <p role="alert" className="text-sm text-red-400">
           {state.error}
