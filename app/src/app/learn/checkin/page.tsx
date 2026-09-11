@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCheckinQuestions } from "@/lib/content";
-import { submitCheckin, recordCheckinAnswer } from "@/lib/placement-actions";
-import { PlacementQuiz } from "@/components/placement-quiz";
-import type { Level } from "@/lib/supabase/database.types";
+import { getDashboardStats } from "@/lib/content";
+import { saveStudioAssessment } from "@/lib/studio-actions";
+import { LearningStudio } from "@/components/studio/learning-studio";
+import { logout } from "@/lib/auth-actions";
 
 export default async function CheckinPage() {
   const supabase = await createClient();
@@ -12,38 +12,15 @@ export default async function CheckinPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
-    .select("current_level, next_checkin_at")
+    .select("placement_completed, next_checkin_at")
     .eq("id", user.id)
     .single();
 
-  const dueNow = !profile?.next_checkin_at || new Date(profile.next_checkin_at) <= new Date();
-  if (!dueNow) redirect("/learn");
-
-  const level = (profile?.current_level as Level) ?? "a1";
-  const questions = await getCheckinQuestions(user.id, level);
-
-  if (questions.length === 0) {
-    // nothing to re-test yet (e.g. brand new account) — just reschedule and continue
-    await submitCheckin(level);
-    redirect("/learn");
-  }
-
-  return (
-    <main className="flex min-h-full flex-1 flex-col justify-center px-4 py-8">
-      <PlacementQuiz
-        questions={questions}
-        heading="Progress check-in"
-        introText="Zeit für einen Check-in! Let's see how your German is coming along."
-        resultText={() => "Great work! I've updated your progress — see you again in 7 days."}
-        onFinish={submitCheckin}
-        onAnswer={async (q, correct) => {
-          "use server";
-          await recordCheckinAnswer(q.id, correct);
-        }}
-        showSkip={false}
-      />
-    </main>
-  );
+  if (error) throw new Error("Your profile could not be loaded. Please try again.");
+  if (!profile?.placement_completed) redirect("/learn/placement");
+  if (profile.next_checkin_at && new Date(profile.next_checkin_at) > new Date()) redirect("/learn");
+  const stats = await getDashboardStats(user.id);
+  return <LearningStudio userId={user.id} stats={stats} initialAssessment saveAssessment={saveStudioAssessment} logoutAction={logout} />;
 }

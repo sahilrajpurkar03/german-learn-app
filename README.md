@@ -1,30 +1,19 @@
 # Sprechen — Learn German
 
-A spaced-repetition German learning app (A1–B1) with listening, typing, word-bank, multiple-choice, and speaking exercises.
+## App features
 
-## Live app
+- Everyday German practice from A1 to B1.
+- Listening, speaking, typing, sentence-building, and multiple-choice exercises.
+- Spaced-repetition reviews to help you remember what you learn.
+- Starting-level assessment and weekly check-ins.
 
-**https://app-dusky-nine-52.vercel.app**
+## Install on your phone
 
-Scan to open on your phone:
+Open [Sprechen](https://app-dusky-nine-52.vercel.app), or scan the QR code below.
 
-![QR code to open the live app](docs/qr-code.png)
+- **Android:** Open the website in Chrome → **Install app**.
+- **iPhone:** Open the website in Safari → **Share** → **Add to Home Screen**.
 
-## Project structure
+## QR code
 
-- `app/` — Next.js application (deployed to Vercel)
-- `supabase/` — database migrations and seed data
-- `scripts/` — one-off maintenance SQL/JS scripts
-- `source/` — local textbook source material (not committed)
-
-## Development
-
-```bash
-cd app
-npm install
-npm run dev
-```
-
-Requires a `.env.local` in `app/` with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-
-Pushes to `master` automatically redeploy the live app via Vercel's GitHub integration.
+![QR code to open Sprechen](docs/qr-code.png)

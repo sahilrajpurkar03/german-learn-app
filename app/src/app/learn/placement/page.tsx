@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getPlacementQuestions } from "@/lib/content";
-import { PlacementQuiz } from "@/components/placement-quiz";
+import { saveStudioAssessment } from "@/lib/studio-actions";
+import { LearningStudio } from "@/components/studio/learning-studio";
+import { logout } from "@/lib/auth-actions";
 
 export default async function PlacementPage() {
   const supabase = await createClient();
@@ -10,18 +11,12 @@ export default async function PlacementPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
     .select("placement_completed")
     .eq("id", user.id)
     .single();
+  if (error) throw new Error("Your profile could not be loaded. Please try again.");
   if (profile?.placement_completed) redirect("/learn");
-
-  const questions = await getPlacementQuestions();
-
-  return (
-    <main className="flex min-h-full flex-1 flex-col justify-center px-4 py-8">
-      <PlacementQuiz questions={questions} />
-    </main>
-  );
+  return <LearningStudio userId={user.id} initialAssessment saveAssessment={saveStudioAssessment} logoutAction={logout} />;
 }

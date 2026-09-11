@@ -1,20 +1,40 @@
 "use client";
 
-export function speakGerman(text: string, callbacks?: { onStart?: () => void; onEnd?: () => void }) {
+let stopActiveSpeech: (() => void) | null = null;
+
+export function speakGerman(text: string, callbacks?: { onStart?: () => void; onEnd?: () => void; onError?: () => void; rate?: number }) {
   if (typeof window === "undefined" || !window.speechSynthesis) {
+    callbacks?.onError?.();
     callbacks?.onEnd?.();
-    return;
+    return () => {};
   }
-  window.speechSynthesis.cancel();
+  stopActiveSpeech?.();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "de-DE";
-  utterance.rate = 0.9;
-  if (callbacks?.onStart) utterance.onstart = callbacks.onStart;
-  if (callbacks?.onEnd) {
-    utterance.onend = callbacks.onEnd;
-    utterance.onerror = callbacks.onEnd;
-  }
+  utterance.rate = callbacks?.rate ?? 0.9;
+  const voice = window.speechSynthesis.getVoices().find((entry) => entry.lang.startsWith("de"));
+  if (voice) utterance.voice = voice;
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    callbacks?.onEnd?.();
+    if (stopActiveSpeech === stop) stopActiveSpeech = null;
+  };
+  const stop = () => {
+    if (done) return;
+    finish();
+    window.speechSynthesis.cancel();
+  };
+  utterance.onstart = () => { if (!done) callbacks?.onStart?.(); };
+  utterance.onend = finish;
+  utterance.onerror = () => {
+    if (!done) callbacks?.onError?.();
+    finish();
+  };
+  stopActiveSpeech = stop;
   window.speechSynthesis.speak(utterance);
+  return stop;
 }
 
 interface SpeechRecognitionResultLike {
@@ -51,7 +71,7 @@ export function isSpeechRecognitionSupported(): boolean {
   return getSpeechRecognitionCtor() !== null;
 }
 
-export function listenOnce(lang = "de-DE"): Promise<string> {
+export function listenOnce(lang = "de-DE", signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
@@ -62,14 +82,26 @@ export function listenOnce(lang = "de-DE"): Promise<string> {
     recognition.lang = lang;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-
+    let settled = false;
+    const finish = (error?: Error, transcript = "") => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+      recognition.stop();
+      if (error) reject(error);
+      else resolve(transcript);
+    };
+    const abort = () => finish(new Error("Recording stopped."));
+    const timer = setTimeout(() => finish(new Error("No speech received. Try again or type your reply.")), 15000);
+    signal?.addEventListener("abort", abort, { once: true });
     recognition.onresult = (event) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
-      resolve(transcript);
+      finish(transcript ? undefined : new Error("No speech received. Try again."), transcript);
     };
-    recognition.onerror = () => reject(new Error("Could not hear you clearly, try again."));
-    recognition.onend = () => {};
-
-    recognition.start();
+    recognition.onerror = () => finish(new Error("Microphone unavailable. Check permission, or type your reply."));
+    recognition.onend = () => finish(new Error("No speech received. Try again or type your reply."));
+    if (signal?.aborted) { abort(); return; }
+    try { recognition.start(); } catch { finish(new Error("Could not start the microphone.")); }
   });
 }
