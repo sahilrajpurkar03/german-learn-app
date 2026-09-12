@@ -1,6 +1,8 @@
 // Hand-written types matching supabase/migrations/0001_init.sql.
 // Regenerate with `supabase gen types typescript` once the project is linked, if the schema evolves.
 
+import type { PersonalFunctions, PersonalTables } from "../personal-database";
+
 export type Level = "a1" | "a2" | "b1";
 export type ItemType = "vocab" | "phrase";
 export type ExerciseType = "speak" | "listen_type" | "word_bank" | "mcq" | "match";
@@ -8,7 +10,7 @@ export type SessionMode = "mixed" | "speaking" | "listening" | "vocab";
 
 export interface Database {
   public: {
-    Tables: {
+    Tables: PersonalTables & {
       profiles: {
         Row: {
           id: string;
@@ -120,7 +122,7 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: PersonalFunctions;
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

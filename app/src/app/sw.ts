@@ -18,7 +18,8 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
-      matcher: ({ url }) => url.origin === self.location.origin && url.pathname.startsWith("/auth/"),
+      matcher: ({ url }) => url.origin !== self.location.origin ||
+        !/^\/(?:_next\/(?:static|image)(?:\/|$)|images\/|icon-[^/]+\.png$)/.test(url.pathname),
       handler: new NetworkOnly(),
     },
     ...defaultCache,
@@ -26,3 +27,17 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    for (const name of await caches.keys()) {
+      const cache = await caches.open(name);
+      for (const request of await cache.keys()) {
+        const url = new URL(request.url);
+        if (url.origin !== self.location.origin || /^\/(?:learn|auth)(?:\/|$)/.test(url.pathname)) {
+          await cache.delete(request);
+        }
+      }
+    }
+  })());
+});

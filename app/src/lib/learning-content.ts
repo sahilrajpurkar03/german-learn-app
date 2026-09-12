@@ -1,4 +1,5 @@
 import type { AssessmentItem, Skill } from "./learning-engine";
+import { EXTRA_CHAPTERS } from "./learning-chapters.ts";
 
 export const ASSESSMENT_BANK: AssessmentItem[] = [
   {
@@ -286,6 +287,8 @@ export type MissionTurn = {
 };
 export type Mission = {
   id: string;
+  topic?: string;
+  challenge?: string;
   title: string;
   subtitle: string;
   place: string;
@@ -297,7 +300,7 @@ export type Mission = {
   turns: MissionTurn[];
 };
 
-export const MISSIONS: Mission[] = [
+const CORE_MISSIONS: Mission[] = [
   {
     id: "cafe",
     title: "Your usual, please.",
@@ -583,3 +586,5 @@ export const MISSIONS: Mission[] = [
     ],
   },
 ];
+
+export const MISSIONS: Mission[] = [...CORE_MISSIONS, ...EXTRA_CHAPTERS];

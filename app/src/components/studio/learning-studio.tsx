@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import type { DashboardStats } from "@/lib/content";
 import { ASSESSMENT_BANK, MISSIONS } from "@/lib/learning-content";
+import { chapterTopic, filterChapters, orderChapters } from "@/lib/chapter-library";
 import {
   dueForCheckin,
   scoreAssessment,
@@ -37,6 +38,7 @@ import {
 import type { AssessmentAnswer } from "@/lib/learning-engine";
 import { AssessmentPanel } from "./assessment-panel";
 import { ConversationRoom } from "./conversation-room";
+import { PersonalChapterLibrary } from "./personal-chapter-library";
 import { StationChallenge } from "./station-challenge";
 import { useStudioStore } from "./studio-store";
 import { useVoice } from "./use-voice";
@@ -45,6 +47,7 @@ import "./studio.css";
 type View =
   | "today"
   | "situations"
+  | "personal"
   | "notebook"
   | "profile"
   | "assessment"
@@ -75,7 +78,10 @@ export function LearningStudio({
   );
   const [missionId, setMissionId] = useState(MISSIONS[0].id);
   const [notice, setNotice] = useState<string | null>(null);
-  const [filter, setFilter] = useState("All situations");
+  const [filter, setFilter] = useState("All topics");
+  const [chapterQuery, setChapterQuery] = useState("");
+  const [chapterProgress, setChapterProgress] = useState("All chapters");
+  const [chapterLimit, setChapterLimit] = useState(12);
   const [notebookQuery, setNotebookQuery] = useState("");
   const [revealed, setRevealed] = useState<string | null>(null);
   const [now] = useState(() => new Date());
@@ -96,12 +102,9 @@ export function LearningStudio({
       : state.interest === "Meeting people"
         ? "neighbors"
         : "cafe";
-  const ordered = [...MISSIONS].sort(
-    (left, right) =>
-      Number(right.skill === report?.focus) -
-        Number(left.skill === report?.focus) ||
-      Number(right.id === preferred) - Number(left.id === preferred),
-  );
+  const ordered = orderChapters(MISSIONS, state.completed, report?.focus, preferred);
+  const topics = [...new Set(MISSIONS.map(chapterTopic))].sort();
+  const chapters = filterChapters(MISSIONS, filter, chapterQuery, chapterProgress, state.completed);
   const recommended =
     ordered.find((entry) => !state.completed[entry.id]) ?? ordered[0];
   const plan = ordered.slice(
@@ -115,6 +118,7 @@ export function LearningStudio({
   const nav = [
     { id: "today", title: "My day", icon: House },
     { id: "situations", title: "Real-life practice", icon: MessageCircle },
+    { id: "personal", title: "My chapters", icon: Plus },
     { id: "notebook", title: "My phrases", icon: BookOpen },
     { id: "profile", title: "My progress", icon: ChartNoAxesCombined },
   ] as const;
@@ -535,7 +539,7 @@ export function LearningStudio({
                   </button>
                 </div>
                 <div className="mission-grid">
-                  {MISSIONS.filter((entry) => entry.id !== recommended.id).map(
+                  {ordered.filter((entry) => entry.id !== recommended.id).slice(0, 3).map(
                     (entry) => (
                       <button
                         className="mission-card"
@@ -586,34 +590,30 @@ export function LearningStudio({
               <div className="page-heading">
                 <div>
                   <span className="eyebrow">PRACTICE WITH A PURPOSE</span>
-                  <h1>A place. A person. Your words.</h1>
+                  <h1>Your chapter library.</h1>
                   <p>
-                    Choose a situation you want to feel more comfortable in.
+                    {MISSIONS.length} chapters · {completed} completed
                   </p>
                 </div>
               </div>
-              <div className="filter-row">
-                {["All situations", "Everyday errands", "People & plans"].map(
-                  (entry) => (
-                    <button
-                      key={entry}
-                      className={filter === entry ? "selected" : ""}
-                      aria-pressed={filter === entry}
-                      onClick={() => setFilter(entry)}
-                    >
-                      {entry}
-                    </button>
-                  ),
-                )}
+              <div className="chapter-filters">
+                <label>Find a chapter
+                  <input type="search" value={chapterQuery} onChange={(event) => { setChapterQuery(event.target.value); setChapterLimit(12); }} />
+                </label>
+                <label>Topic
+                  <select aria-label="Topic" value={filter} onChange={(event) => { setFilter(event.target.value); setChapterLimit(12); }}>
+                    {["All topics", ...topics].map((topic) => <option key={topic}>{topic}</option>)}
+                  </select>
+                </label>
+                <label>Progress
+                  <select aria-label="Progress" value={chapterProgress} onChange={(event) => { setChapterProgress(event.target.value); setChapterLimit(12); }}>
+                    {["All chapters", "Not completed", "Completed"].map((progress) => <option key={progress}>{progress}</option>)}
+                  </select>
+                </label>
               </div>
+              <p role="status" className="chapter-count">{chapters.length} chapters found</p>
               <div className="mission-grid expanded">
-                {MISSIONS.filter(
-                  (entry) =>
-                    filter === "All situations" ||
-                    (filter === "Everyday errands"
-                      ? ["cafe", "station"].includes(entry.id)
-                      : ["appointment", "neighbors"].includes(entry.id)),
-                ).map((entry) => (
+                {chapters.slice(0, chapterLimit).map((entry) => (
                   <button
                     className="mission-card"
                     key={entry.id}
@@ -630,7 +630,7 @@ export function LearningStudio({
                     </div>
                     <div>
                       <small>
-                        {entry.place} · {SKILL_NAMES[entry.skill]}
+                        Chapter {MISSIONS.indexOf(entry) + 1} · {chapterTopic(entry)}{state.completed[entry.id] ? " · Completed" : ""}
                       </small>
                       <h3>{entry.title}</h3>
                       <p>{entry.subtitle}</p>
@@ -641,6 +641,12 @@ export function LearningStudio({
                   </button>
                 ))}
               </div>
+              {chapters.length === 0 && <p>No chapters match these filters.</p>}
+              {chapters.length > chapterLimit && (
+                <button className="text-button chapter-more" onClick={() => setChapterLimit((limit) => limit + 12)}>
+                  <Plus size={18} /> Show more chapters
+                </button>
+              )}
               {!preview && (
                 <Link className="review-link" href="/learn/session">
                   <RotateCcw size={20} />
@@ -656,6 +662,7 @@ export function LearningStudio({
               )}
             </section>
           )}
+          {view === "personal" && <PersonalChapterLibrary preview={preview} />}
           {view === "assessment" && (
             <>
               <button

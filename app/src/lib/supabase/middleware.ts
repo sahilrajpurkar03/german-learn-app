@@ -2,7 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
-  if (request.nextUrl.pathname === "/preview") return NextResponse.next({ request });
+  if (["/preview", "/imprint", "/privacy", "/data-sharing", "/security", "/api/personal-chapters", "/api/personal-chapters/cleanup"].includes(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -38,17 +40,28 @@ export async function updateSession(request: NextRequest) {
     "/auth/reset-password",
   ].includes(request.nextUrl.pathname);
 
+  function privateResponse(response: NextResponse) {
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return response;
+  }
+
+  function redirectWithCookies(url: URL) {
+    const response = NextResponse.redirect(url);
+    for (const cookie of supabaseResponse.cookies.getAll()) response.cookies.set(cookie);
+    return privateResponse(response);
+  }
+
   if (!user && !isAuthRoute && !isRecoveryRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/learn";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
 
-  return supabaseResponse;
+  return privateResponse(supabaseResponse);
 }

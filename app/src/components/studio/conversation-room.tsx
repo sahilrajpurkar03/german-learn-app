@@ -22,6 +22,9 @@ import { useVoice } from "./use-voice";
 
 interface Props {
   mission: Mission;
+  selfCheckReplies?: boolean;
+  showBookmarks?: boolean;
+  exitLabel?: string;
   initialIndex: number;
   initialCorrect: number;
   savedTexts: string[];
@@ -33,6 +36,9 @@ interface Props {
 
 export function ConversationRoom({
   mission,
+  selfCheckReplies = false,
+  showBookmarks = true,
+  exitLabel = "My plan",
   initialIndex,
   initialCorrect,
   savedTexts,
@@ -83,7 +89,7 @@ export function ConversationRoom({
                   <strong lang="de">{entry.accepted[0]}</strong>
                   <small>{entry.task}</small>
                 </span>
-                <button
+                {showBookmarks && <button
                   className="icon-button"
                   title="Save phrase"
                   aria-label={`Save phrase ${entry.accepted[0]}`}
@@ -100,24 +106,24 @@ export function ConversationRoom({
                   ) : (
                     <Bookmark size={19} />
                   )}
-                </button>
+                </button>}
               </div>
             ))}
         </div>
         <div className="real-world-challenge">
           <span className="eyebrow">ONE SMALL CHALLENGE</span>
           <p>
-            {mission.id === "cafe"
+            {mission.challenge ?? (mission.id === "cafe"
               ? "Order your next drink in German, including one change to the order."
               : mission.id === "station"
                 ? "Listen for the platform and time in your next station announcement."
                 : mission.id === "appointment"
                   ? "Rehearse an appointment call without looking at the screen."
-                  : "Start a short conversation with someone in your neighborhood."}
+                  : "Start a short conversation with someone in your neighborhood.")}
           </p>
         </div>
         <button className="primary" onClick={onExit}>
-          Back to my plan <ArrowRight size={18} />
+          Back to {exitLabel.toLowerCase()} <ArrowRight size={18} />
         </button>
       </section>
     );
@@ -126,7 +132,7 @@ export function ConversationRoom({
     <section className="conversation studio-panel-entry">
       <div className="conversation-top">
         <button className="text-button" onClick={onExit}>
-          <ArrowLeft size={17} /> My plan
+          <ArrowLeft size={17} /> {exitLabel}
         </button>
         <span>
           {mission.place}{" "}
@@ -140,6 +146,8 @@ export function ConversationRoom({
         key={`${mission.id}-${index}`}
         mission={mission}
         turn={turn}
+        selfCheckReplies={selfCheckReplies}
+        showBookmarks={showBookmarks}
         onAdvance={advance}
         onSave={() =>
           onSave(`${mission.id}-${index}`, turn.accepted[0], turn.task)
@@ -153,12 +161,16 @@ export function ConversationRoom({
 function ConversationTurn({
   mission,
   turn,
+  selfCheckReplies,
+  showBookmarks,
   onAdvance,
   onSave,
   saved,
 }: {
   mission: Mission;
   turn: MissionTurn;
+  selfCheckReplies: boolean;
+  showBookmarks: boolean;
   onAdvance: (independent: boolean) => void;
   onSave: () => void;
   saved: boolean;
@@ -168,6 +180,7 @@ function ConversationTurn({
   const [translation, setTranslation] = useState(false);
   const [transcript, setTranscript] = useState(false);
   const [result, setResult] = useState<boolean | null>(null);
+  const [selfCheck, setSelfCheck] = useState(false);
   const [assisted, setAssisted] = useState(false);
   const [played, setPlayed] = useState(false);
   const voice = useVoice(turn.line, () => setPlayed(true));
@@ -179,6 +192,11 @@ function ConversationTurn({
   function check() {
     if (!response.trim() || result !== null) return;
     voice.stop();
+    if (selfCheckReplies && turn.kind === "respond" && !isAccepted(turn, response)) {
+      setSelfCheck(true);
+      setAssisted(true);
+      return;
+    }
     setResult(isAccepted(turn, response));
   }
 
@@ -376,7 +394,18 @@ function ConversationTurn({
             </p>
           )}
         </div>
-        {result !== null ? (
+        {selfCheck ? (
+          <div className="conversation-feedback support" role="status">
+            <strong>Compare your reply</strong>
+            <p lang="de">{turn.accepted[0]}</p>
+            <p>{turn.note}</p>
+            <small>Your wording was not automatically graded. A different reply can be valid. Self-checked replies do not count as independently verified answers.</small>
+            <div className="feedback-actions">
+              <button className="text-button" onClick={() => { setSelfCheck(false); setValue(""); }}>Try the model reply</button>
+              <button className="primary" onClick={() => { voice.stop(); onAdvance(false); }}>I checked the meaning <ArrowRight size={17} /></button>
+            </div>
+          </div>
+        ) : result !== null ? (
           <div
             className={`conversation-feedback ${result ? "correct" : "support"}`}
             role="status"
@@ -415,7 +444,7 @@ function ConversationTurn({
                   Try again
                 </button>
               )}
-              {turn.kind !== "listen" && (
+              {showBookmarks && turn.kind !== "listen" && (
                 <button
                   className="icon-button"
                   aria-label={saved ? "Phrase saved" : "Save phrase"}
