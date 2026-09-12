@@ -38,6 +38,77 @@ test("beta status is visible before login and during practice", async ({ page },
   }
 });
 
+test("beta acknowledgment survives navigation and reload while legal links remain", async ({ page }) => {
+  await page.goto("/preview");
+  const notice = page.getByRole("complementary", { name: "Beta testing notice" });
+  await notice.getByRole("button", { name: "Accept", exact: true }).click();
+  await expect(notice).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("sprechen-beta-notice"))).toBe("1");
+  const links = page.getByRole("navigation", { name: "Legal information" });
+  await expect(links.getByRole("link")).toHaveCount(4);
+  await links.getByRole("link", { name: "Privacy policy", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Privacy policy", exact: true })).toBeVisible();
+  await expect(notice).toHaveCount(0);
+  await page.reload();
+  await expect(notice).toHaveCount(0);
+  await page.goto("/login");
+  await expect(notice).toHaveCount(0);
+});
+
+test("beta notice can be reopened from the footer on mobile and desktop", async ({ page }, testInfo) => {
+  await page.goto("/preview");
+  const notice = page.getByRole("complementary", { name: "Beta testing notice" });
+  const footer = page.getByRole("contentinfo", { name: "Site information" });
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(notice).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`notice-expanded-${width}.png`) });
+    await notice.getByRole("button", { name: "Accept", exact: true }).click();
+    await expect(notice).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath(`notice-dismissed-${width}.png`) });
+    await footer.getByRole("button", { name: "Beta notice", exact: true }).click();
+    await expect(notice).toBeFocused();
+    await expect(notice).toBeInViewport();
+  }
+});
+
+test("a previous beta notice version does not hide the current warning", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("sprechen-beta-notice", "previous-version"));
+  await page.goto("/privacy");
+  const notice = page.getByRole("complementary", { name: "Beta testing notice" });
+  await expect(notice).toBeVisible();
+  await notice.getByRole("button", { name: "Accept", exact: true }).click();
+  await expect(notice).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("sprechen-beta-notice"))).toBe("1");
+});
+
+for (const blockRead of [false, true]) {
+  test(`beta acknowledgment works when storage ${blockRead ? "access" : "writes"} is blocked`, async ({ page }) => {
+    await page.addInitScript((denyRead) => {
+      const originalGet = Storage.prototype.getItem;
+      const originalSet = Storage.prototype.setItem;
+      Storage.prototype.getItem = function (key) {
+        if (denyRead && key === "sprechen-beta-notice") throw new DOMException("Blocked", "SecurityError");
+        return originalGet.call(this, key);
+      };
+      Storage.prototype.setItem = function (key, value) {
+        if (key === "sprechen-beta-notice") throw new DOMException("Blocked", "SecurityError");
+        return originalSet.call(this, key, value);
+      };
+    }, blockRead);
+    await page.goto("/privacy");
+    const notice = page.getByRole("complementary", { name: "Beta testing notice" });
+    await notice.getByRole("button", { name: "Accept", exact: true }).click();
+    await expect(notice).toHaveCount(0);
+    await page.getByRole("button", { name: "Beta notice", exact: true }).click();
+    await expect(notice).toBeVisible();
+    await notice.getByRole("button", { name: "Accept", exact: true }).click();
+    await page.reload();
+    await expect(notice).toBeVisible();
+  });
+}
+
 test("browser headers and unauthenticated private responses are hardened", async ({ request }) => {
   const publicResponse = await request.get("/privacy");
   const headers = publicResponse.headers();

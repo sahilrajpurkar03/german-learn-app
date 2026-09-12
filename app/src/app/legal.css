@@ -1,6 +1,11 @@
 .site-notice {
   position: relative;
   z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 24px;
   flex-shrink: 0;
   padding: 12px 24px;
   border-bottom: 1px solid #dcc772;
@@ -9,11 +14,21 @@
   font-size: 13px;
   line-height: 1.6;
 }
+.site-notice > div { flex: 1 1 320px; min-width: 0; }
 .site-notice p { margin: 0; }
 .site-notice strong { margin-right: 8px; }
-.site-notice nav { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 4px; }
-.site-notice a { text-decoration: underline; text-underline-offset: 3px; }
-.site-notice a:focus-visible, .legal-page a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.site-notice small { display: block; margin-top: 3px; font-size: 11px; }
+.site-notice button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 16px; border: 1px solid #806920; border-radius: 5px; background: #fffaf0; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.site-notice button:hover { background: #fff; }
+.site-notice button:focus-visible, .site-footer a:focus-visible, .site-footer button:focus-visible, .legal-page a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.site-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; flex-shrink: 0; padding: 16px 24px; border-top: 1px solid #dce5df; background: #f8faf7; color: #24382e; font-size: 12px; line-height: 1.6; }
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.site-footer a, .site-footer button { text-decoration: underline; text-underline-offset: 3px; }
+.site-footer button { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 4px 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+@media (max-width: 700px) {
+  .site-notice, .site-footer { padding-inline: 20px; }
+  body:has(.studio-shell) .site-footer { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
 .legal-page { width: 100%; flex: 1; background: #f8faf7; color: #24382e; padding: 40px 20px 100px; }
 .legal-page article { max-width: 780px; margin: 0 auto; overflow-wrap: anywhere; }
 .legal-page h1 { font-size: 32px; margin: 20px 0 8px; }

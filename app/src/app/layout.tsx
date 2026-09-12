@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "./legal.css";
-import { SiteNotice } from "@/components/site-notice";
+import { SiteFooter, SiteNotice } from "@/components/site-notice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${studioSans.variable} ${studioDisplay.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><SiteNotice />{children}</body>
+      <body className="min-h-full flex flex-col"><SiteNotice />{children}<SiteFooter /></body>
     </html>
   );
 }
