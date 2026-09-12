@@ -20,14 +20,15 @@ for (const [path, title] of Object.entries({
   });
 }
 
-test("operator contact is public even while the postal address is incomplete", async ({ page }) => {
+test("operator contact includes the supplied full postal address", async ({ page }) => {
   for (const path of ["/imprint", "/privacy"]) {
     await page.goto(path);
     const document = page.locator(".legal-page");
     await expect(document).toContainText("Sahil Rajpurkar");
-    await expect(document).toContainText("M\u00f6nsheim, 71297, Germany");
+    await expect(document).toContainText("Postal address: Emil-Figge-Str. 21");
+    await expect(document).toContainText("44227 Dortmund");
     await expect(document.getByRole("link", { name: "sahilrajpurkar1998@gmail.com", exact: true })).toHaveAttribute("href", "mailto:sahilrajpurkar1998@gmail.com");
-    await expect(document.getByRole("note")).toContainText("full postal address");
+    await expect(document.getByRole("note")).toHaveCount(0);
   }
 });
 

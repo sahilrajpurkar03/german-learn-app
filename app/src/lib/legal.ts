@@ -9,12 +9,14 @@ export function resolveLegalDetails(environment: LegalEnvironment) {
   const configuredAddress = environment.LEGAL_OPERATOR_ADDRESS?.trim() || "";
   const operator = {
     name: environment.LEGAL_OPERATOR_NAME?.trim() || "Sahil Rajpurkar",
-    address: configuredAddress || "M\u00f6nsheim, 71297, Germany",
+    address: configuredAddress || "Emil-Figge-Str. 21\n44227 Dortmund\nGermany",
     email: environment.LEGAL_CONTACT_EMAIL?.trim() || "sahilrajpurkar1998@gmail.com",
     country: "Germany",
   };
   const contactAvailable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(operator.email);
-  const addressConfirmed = Boolean(configuredAddress && environment.LEGAL_OPERATOR_ADDRESS_CONFIRMED === "true");
+  const addressConfirmed = configuredAddress
+    ? environment.LEGAL_OPERATOR_ADDRESS_CONFIRMED === "true"
+    : environment.LEGAL_OPERATOR_ADDRESS_CONFIRMED !== "false";
   return { operator, contactAvailable, addressConfirmed, detailsComplete: Boolean(operator.name && contactAvailable && addressConfirmed) };
 }
 

@@ -25,9 +25,9 @@ Do not put credentials in chat, source, screenshots, or tracked environment file
 
 ### Public Legal Contact
 
-The operator's supplied name, locality, and email are public defaults in [legal.ts](../app/src/lib/legal.ts). `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_ADDRESS`, and `LEGAL_CONTACT_EMAIL` can override them at build time. A locality alone is not a confirmed full postal address. Supply the full appropriate postal address privately in deployment settings, then set `LEGAL_OPERATOR_ADDRESS_CONFIRMED=true` and rebuild only after checking it. This flag records the operator's confirmation, not an automated legal compliance assessment. Do not set it for only a town/postcode/country. The contact email stays visible even while the legal notice remains a draft.
+The operator's supplied name, full address (Emil-Figge-Str. 21, 44227 Dortmund, Germany), and email are public defaults in [legal.ts](../app/src/lib/legal.ts). The address was supplied for publication on 2026-09-12 and is treated as operator-confirmed, not independently verified or legally certified. `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_ADDRESS`, and `LEGAL_CONTACT_EMAIL` can override them at build time. A custom address requires `LEGAL_OPERATOR_ADDRESS_CONFIRMED=true` after checking it; do not confirm only a town/postcode/country. Setting that flag to `false` also marks the default address unconfirmed. Rebuild after changing these settings. The contact email stays visible independently of address confirmation.
 
-The settings pasted by the operator on 2026-09-12 showed Global ZDR and Inference APIs ZDR disabled, with Batch and Fine-tuning & LoRA on. They have not been changed or independently verified by this implementation. Keep creation disabled until retention and the other launch gates are confirmed.
+On 2026-09-12, after receiving the ZDR setup guidance, the operator reported that the Groq settings were completed. The effective dashboard configuration has not been independently verified by this implementation. This report does not confirm API-key configuration, database migration, cleanup operation, account isolation, or a live benchmark. Keep creation disabled until the launch gates above are confirmed.
 
 ## Cost Controls
 

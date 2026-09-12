@@ -2,20 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveLegalDetails } from "./legal.ts";
 
-test("supplied operator contact remains usable while the locality is incomplete", () => {
+test("supplied operator contact includes the confirmed full postal address", () => {
   const details = resolveLegalDetails({});
   assert.equal(details.operator.name, "Sahil Rajpurkar");
-  assert.equal(details.operator.address, "M\u00f6nsheim, 71297, Germany");
+  assert.equal(details.operator.address, "Emil-Figge-Str. 21\n44227 Dortmund\nGermany");
   assert.equal(details.operator.email, "sahilrajpurkar1998@gmail.com");
   assert.equal(details.contactAvailable, true);
-  assert.equal(details.addressConfirmed, false);
-  assert.equal(details.detailsComplete, false);
+  assert.equal(details.addressConfirmed, true);
+  assert.equal(details.detailsComplete, true);
 });
 
 test("a configured location is not treated as a confirmed postal address automatically", () => {
   const details = resolveLegalDetails({ LEGAL_OPERATOR_ADDRESS: "M\u00f6nsheim, 71297, Germany" });
   assert.equal(details.detailsComplete, false);
-  assert.equal(resolveLegalDetails({ LEGAL_OPERATOR_ADDRESS_CONFIRMED: "true" }).addressConfirmed, false);
+  assert.equal(resolveLegalDetails({ LEGAL_OPERATOR_ADDRESS_CONFIRMED: "false" }).addressConfirmed, false);
 });
 
 test("public environment overrides require an explicit postal address confirmation", () => {
