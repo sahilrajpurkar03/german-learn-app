@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { legalDetailsComplete, legalOperator, legalTitles, type LegalPage } from "@/lib/legal";
+import { legalAddressConfirmed, legalContactAvailable, legalDetailsComplete, legalOperator, legalTitles, type LegalPage } from "@/lib/legal";
 
 function OperatorContact() {
   return (
     <p>
       Operator: {legalOperator.name || "Not yet provided"}<br />
-      Postal address: <span style={{ whiteSpace: "pre-line" }}>{legalOperator.address || "Not yet provided"}</span><br />
+      {legalAddressConfirmed ? "Postal address" : "Location (postal address not confirmed)"}: <span style={{ whiteSpace: "pre-line" }}>{legalOperator.address || "Not yet provided"}</span><br />
       Country: {legalOperator.country}<br />
-      Public contact: {legalDetailsComplete ? <a href={`mailto:${legalOperator.email}`}>{legalOperator.email}</a> : "Not yet verified"}
+      Public contact: {legalContactAvailable ? <a href={`mailto:${legalOperator.email}`}>{legalOperator.email}</a> : "Not yet provided"}
     </p>
   );
 }
@@ -21,7 +21,7 @@ export function LegalDocument({ page }: { page: LegalPage }) {
         <p>Last updated: 12 September 2026. Personal, non-commercial beta project.</p>
         {!legalDetailsComplete && (
           <p className="legal-draft" role="note">
-            Draft legal information: the operator has not yet supplied complete identity, postal address, and contact details. These pages are not a completed legal notice. Provider locations, contracts, and retention settings also require operator verification before broader public testing.
+            Draft legal information: complete operator contact details, including a full postal address, have not yet been confirmed. A town, postcode, and country alone do not supply a street and house number. These pages are not a completed legal notice. Provider locations, contracts, and retention settings also require operator verification before broader public testing.
           </p>
         )}
 
@@ -40,7 +40,7 @@ export function LegalDocument({ page }: { page: LegalPage }) {
 
         {page === "privacy" && <>
           <h2>Controller and contact</h2>
-          <p>The website operator is responsible for the processing described here. Contact details, when supplied, are below.</p>
+          <p>The website operator is responsible for the processing described here. Supplied contact details are below; any incomplete postal address is marked.</p>
           <OperatorContact />
           <h2>Data collected and purposes</h2>
           <ul>
@@ -66,7 +66,7 @@ export function LegalDocument({ page }: { page: LegalPage }) {
           <p>Personal chapter audio is scheduled for removal immediately after processing, on failure, or when discarded. A daily cleanup job retries removal of expired uploads, temporary transcripts, and creation-job metadata after their 24-hour expiry; with normal operation this can take up to about 48 hours from creation. Failures or outages can delay cleanup and require operator intervention. Upload-path metadata is retained until that cleanup so removal can be retried even after a late upload finishes. This is not a promise about independent provider logs or backups.</p>
           <p>Saved personal chapters and their reviews remain until you delete the chapter, the account is deleted, or a beta reset removes them. My Chapters provides chapter export and deletion, including associated progress and reviews. Downloaded exports remain under your control. Unsaved recap text is kept in the open page, not automatically saved across reloads. No automatic retention period is implemented for other account or learning records. Provider logs, email records, and backups follow the providers&apos; configured retention, which the operator still needs to confirm. No immediate deletion from all backups is promised.</p>
           <h2>Your rights</h2>
-          <p>Subject to the applicable conditions, you may request access, correction, deletion, restriction, portability, or object to processing. You may withdraw consent for consent-based processing without affecting its prior lawfulness. Personal chapters have export and deletion controls; a complete account export/deletion workflow is not currently implemented. Use the operator contact above once provided for other requests. You may complain to a competent data protection supervisory authority, including the authority in the German federal state where you live or where the operator is established. Clearing browser storage alone is not a cloud-deletion request.</p>
+          <p>Subject to the applicable conditions, you may request access, correction, deletion, restriction, portability, or object to processing. You may withdraw consent for consent-based processing without affecting its prior lawfulness. Personal chapters have export and deletion controls; a complete account export/deletion workflow is not currently implemented. Use the operator contact above for other requests. You may complain to a competent data protection supervisory authority, including the authority in the German federal state where you live or where the operator is established. Clearing browser storage alone is not a cloud-deletion request.</p>
           <h2>Beta and changes</h2>
           <p>Learning estimates are informal and do not make legally significant automated decisions about you. Features and these notices may change. The beta notice is shown until acknowledged in this browser and can be reopened from the footer. Its acknowledgment is not consent to data sharing or a waiver of your rights.</p>
         </>}
@@ -85,7 +85,7 @@ export function LegalDocument({ page }: { page: LegalPage }) {
           <h2>Access and disclosure</h2>
           <p>The operator and authorised provider personnel may have administrative access needed to run or support the service. Information may also be disclosed where legally required. Sharing for a new, unrelated purpose requires an appropriate legal basis and updated information; this notice does not authorise arbitrary sharing.</p>
           <h2>Your choices</h2>
-          <p>You can use the public preview without an account and type instead of using speech. The preview still makes hosting requests and stores progress locally. Do not put real health, financial, identity-document, or other sensitive information into exercise replies. Account data requests use the contact in the <Link href="/privacy">privacy policy</Link> once the operator supplies it.</p>
+          <p>You can use the public preview without an account and type instead of using speech. The preview still makes hosting requests and stores progress locally. Do not put real health, financial, identity-document, or other sensitive information into exercise replies. Account data requests use the contact in the <Link href="/privacy">privacy policy</Link>.</p>
           <h2>Provider references</h2>
           <ul>
             <li><a href="https://vercel.com/legal/privacy-policy" rel="noreferrer">Vercel privacy policy</a></li>
@@ -109,7 +109,7 @@ export function LegalDocument({ page }: { page: LegalPage }) {
           <h2>Known limits</h2>
           <p>Device-local progress is accessible to someone using the same browser profile and should not contain secrets. Practice scores are not tamper-proof or suitable for ranking or certification. Production infrastructure, provider contracts, backup retention, and live database isolation need independent verification. This project has not completed an independent penetration test.</p>
           <h2>Report a concern</h2>
-          <p>Contact the operator listed in the <Link href="/imprint">imprint</Link> privately once that contact has been supplied. Share a short description and steps to reproduce using your own test account; do not send passwords, reset links, access tokens, or another person&apos;s data. Do not access other accounts or run disruptive tests on the live service.</p>
+          <p>Contact the operator listed in the <Link href="/imprint">imprint</Link> privately. Share a short description and steps to reproduce using your own test account; do not send passwords, reset links, access tokens, or another person&apos;s data. Do not access other accounts or run disruptive tests on the live service.</p>
         </>}
       </article>
     </main>

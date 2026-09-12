@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/learning-engine.test.ts src/lib/station-game.test.ts src/lib/learning-content.test.ts src/lib/personal-chapters.test.ts src/lib/chapter-ai.test.ts src/lib/chapter-http.test.ts tests/personal-storage.test.mjs",
+    "test": "node --experimental-strip-types --test src/lib/learning-engine.test.ts src/lib/station-game.test.ts src/lib/learning-content.test.ts src/lib/personal-chapters.test.ts src/lib/chapter-ai.test.ts src/lib/chapter-http.test.ts src/lib/legal.test.ts tests/personal-storage.test.mjs",
     "test:e2e": "playwright test",
     "test:performance": "node scripts/http-benchmark.mjs performance",
     "test:endurance": "node scripts/http-benchmark.mjs endurance",

@@ -20,6 +20,17 @@ for (const [path, title] of Object.entries({
   });
 }
 
+test("operator contact is public even while the postal address is incomplete", async ({ page }) => {
+  for (const path of ["/imprint", "/privacy"]) {
+    await page.goto(path);
+    const document = page.locator(".legal-page");
+    await expect(document).toContainText("Sahil Rajpurkar");
+    await expect(document).toContainText("M\u00f6nsheim, 71297, Germany");
+    await expect(document.getByRole("link", { name: "sahilrajpurkar1998@gmail.com", exact: true })).toHaveAttribute("href", "mailto:sahilrajpurkar1998@gmail.com");
+    await expect(document.getByRole("note")).toContainText("full postal address");
+  }
+});
+
 test("beta status is visible before login and during practice", async ({ page }, testInfo) => {
   for (const path of ["/login", "/signup", "/auth/forgot-password", "/preview"]) {
     await page.goto(path);
