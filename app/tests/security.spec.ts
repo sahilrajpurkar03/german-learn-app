@@ -1,5 +1,69 @@
 import { test, expect } from "@playwright/test";
 
+for (const path of ["/login", "/signup"]) {
+  test(`password visibility on ${path} preserves input without submitting`, async ({ page }, testInfo) => {
+    await page.addInitScript(() => localStorage.setItem("sprechen-beta-notice", "1"));
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(path);
+      const form = page.locator("form");
+      await form.evaluate((element) => {
+        element.dataset.submissions = "0";
+        element.addEventListener("submit", (event) => {
+          event.preventDefault();
+          element.dataset.submissions = String(Number(element.dataset.submissions) + 1);
+        });
+      });
+      await page.getByLabel("Email", { exact: true }).fill("visibility-test@example.invalid");
+      const password = page.getByLabel("Password", { exact: true });
+      const sample = "Synthetic-only-password-42!";
+      await password.fill(sample);
+      await expect(password).toHaveAttribute("type", "password");
+      await expect(password).toHaveAttribute("autocomplete", path === "/login" ? "current-password" : "new-password");
+      const toggle = page.getByRole("button", { name: "Show password", exact: true });
+      await expect(toggle).toHaveAttribute("type", "button");
+      await expect(toggle).toHaveAttribute("aria-controls", "password");
+      const bounds = await toggle.boundingBox();
+      expect(bounds?.width).toBeGreaterThanOrEqual(44);
+      expect(bounds?.height).toBeGreaterThanOrEqual(44);
+      await toggle.click();
+      await expect(password).toHaveAttribute("type", "text");
+      await expect(password).toHaveValue(sample);
+      const hide = page.getByRole("button", { name: "Hide password", exact: true });
+      await expect(hide).toBeFocused();
+      await expect(hide).toHaveAttribute("title", "Hide password");
+      const layout = await password.evaluate((element) => {
+        const input = element as HTMLInputElement;
+        const bounds = input.getBoundingClientRect();
+        const button = input.parentElement!.querySelector("button")!.getBoundingClientRect();
+        return {
+          paddedTextRight: bounds.right - parseFloat(getComputedStyle(input).paddingRight),
+          buttonLeft: button.left,
+          buttonRight: button.right,
+          inputRight: bounds.right,
+          submittedValue: new FormData(input.form!).get("password"),
+          overflow: document.documentElement.scrollWidth > innerWidth,
+        };
+      });
+      expect(layout.paddedTextRight).toBeLessThanOrEqual(layout.buttonLeft);
+      expect(layout.buttonRight).toBeLessThanOrEqual(layout.inputRight);
+      expect(layout.submittedValue).toBe(sample);
+      expect(layout.overflow).toBe(false);
+      await page.screenshot({ path: testInfo.outputPath(`password-${width}-visible.png`) });
+      await hide.press("Space");
+      await expect(password).toHaveAttribute("type", "password");
+      await page.getByRole("button", { name: "Show password", exact: true }).press("Enter");
+      await expect(password).toHaveAttribute("type", "text");
+      await page.getByRole("button", { name: "Hide password", exact: true }).click();
+      await expect(password).toHaveAttribute("type", "password");
+      await expect(password).toHaveValue(sample);
+      await expect(form).toHaveAttribute("data-submissions", "0");
+      await page.reload();
+      await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "password");
+    }
+  });
+}
+
 for (const [path, title] of Object.entries({
   "/imprint": "Imprint / Impressum",
   "/privacy": "Privacy policy",

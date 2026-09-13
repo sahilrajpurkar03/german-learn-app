@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "./password-input";
 
 export function PasswordRecoveryForm({ mode }: { mode: "request" | "reset" }) {
   const [pending, setPending] = useState(false);
@@ -75,11 +76,11 @@ export function PasswordRecoveryForm({ mode }: { mode: "request" | "reset" }) {
         <>
           <div className="space-y-1">
             <label htmlFor="password" className="text-sm font-medium text-neutral-200">New password</label>
-            <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
+            <PasswordInput id="password" name="password" visibilityLabel="new password" autoComplete="new-password" minLength={8} required className={inputClass} />
           </div>
           <div className="space-y-1">
             <label htmlFor="confirmPassword" className="text-sm font-medium text-neutral-200">Confirm new password</label>
-            <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required className={inputClass} />
+            <PasswordInput id="confirmPassword" name="confirmPassword" visibilityLabel="confirmed password" autoComplete="new-password" minLength={8} required className={inputClass} />
           </div>
         </>
       ) : (

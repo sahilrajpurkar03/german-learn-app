@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import type { AuthFormState } from "@/lib/auth-actions";
+import { PasswordInput } from "./password-input";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -50,10 +51,9 @@ export function AuthForm({ mode, action }: AuthFormProps) {
         <label htmlFor="password" className="text-sm font-medium text-neutral-200">
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           required
           minLength={8}
           autoComplete={isSignup ? "new-password" : "current-password"}
