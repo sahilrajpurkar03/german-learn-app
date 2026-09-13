@@ -119,11 +119,11 @@ export function LearningStudio({
     (phrase) => new Date(phrase.due) <= now,
   );
   const nav = [
-    { id: "today", title: "My day", icon: House },
-    { id: "situations", title: "Real-life practice", icon: MessageCircle },
-    { id: "personal", title: "My chapters", icon: Plus },
-    { id: "notebook", title: "My phrases", icon: BookOpen },
-    { id: "profile", title: "My progress", icon: ChartNoAxesCombined },
+    { id: "today", title: "My day", mobileTitle: "My day", icon: House },
+    { id: "situations", title: "Real-life practice", mobileTitle: "Practice", icon: MessageCircle },
+    { id: "personal", title: "My chapters", mobileTitle: "Chapters", icon: Plus },
+    { id: "notebook", title: "My phrases", mobileTitle: "Phrases", icon: BookOpen },
+    { id: "profile", title: "My progress", mobileTitle: "Progress", icon: ChartNoAxesCombined },
   ] as const;
 
   function persist(transform: Parameters<typeof update>[0]) {
@@ -227,14 +227,17 @@ export function LearningStudio({
         </Link>
         <span className="brand-caption">GERMAN FOR YOUR REAL LIFE</span>
         <nav aria-label="Main navigation">
-          {nav.map(({ id, title, icon: Icon }) => (
+          {nav.map(({ id, title, mobileTitle, icon: Icon }) => (
             <button
               key={id}
               className={view === id ? "active" : ""}
+              aria-label={title}
+              aria-current={view === id ? "page" : undefined}
               onClick={() => navigate(id)}
             >
               <Icon size={20} />
-              <span>{title}</span>
+              <span className="nav-desktop-label" aria-hidden="true">{title}</span>
+              <span className="nav-mobile-label" aria-hidden="true">{mobileTitle}</span>
               {id === "notebook" && state.phrases.length > 0 && (
                 <small>{state.phrases.length}</small>
               )}

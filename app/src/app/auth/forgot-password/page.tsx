@@ -7,7 +7,7 @@ export default async function ForgotPasswordPage({
 }) {
   const { error } = await searchParams;
   return (
-    <main className="flex min-h-full flex-1 flex-col items-center justify-center gap-8 px-4 py-16">
+    <main className="auth-page flex min-h-full flex-1 flex-col items-center justify-center gap-8 px-4 py-16">
       <div className="max-w-sm text-center">
         <h1 className="text-2xl font-semibold text-neutral-50">Forgot password?</h1>
         <p className="mt-1 text-sm text-neutral-400">Enter your email to receive a reset link.</p>

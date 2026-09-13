@@ -163,15 +163,25 @@ test("personal chapter rejects oversized and long audio before upload", async ({
 });
 
 test("personal chapter layouts fit mobile and desktop (mock private library)", async ({ page }, testInfo) => {
+  async function checkText() {
+    const clipped = await page.locator("main h1, main h2, main h3, main p, main button, main label, main summary").evaluateAll((elements) => elements.filter((element) => element.clientWidth > 0 && element.getBoundingClientRect().height > 0 && element.scrollWidth > element.clientWidth + 2).map((element) => element.textContent?.slice(0, 80)));
+    expect(clipped).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
   await mockServices(page, true);
   await openLibrary(page);
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await checkText();
     await page.screenshot({ path: testInfo.outputPath(`library-${width}.png`), fullPage: true });
   }
   await page.setViewportSize({ width: 320, height: 900 });
   await page.getByRole("button", { name: "Open chapter", exact: true }).click();
+  await checkText();
+  await page.getByRole("button", { name: "Delete chapter", exact: true }).click();
+  await checkText();
+  await page.screenshot({ path: testInfo.outputPath("delete-dialog-320.png"), fullPage: true });
+  await page.getByRole("alertdialog").getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "Practise my situation", exact: true }).click();
   await expect(page.locator(".conversation-top")).toBeVisible();
   await page.locator(".conversation-top").getByRole("button", { name: "My chapters", exact: true }).click();
@@ -179,8 +189,11 @@ test("personal chapter layouts fit mobile and desktop (mock private library)", a
   await page.getByRole("button", { name: "Create a chapter", exact: true }).click();
   for (const width of [320, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: testInfo.outputPath(`creator-${width}.png`), fullPage: true });
+    for (const mode of ["Write a recap", "Record a recap", "Upload audio"]) {
+      await page.getByRole("button", { name: mode, exact: true }).click();
+      await checkText();
+      await page.screenshot({ path: testInfo.outputPath(`creator-${mode.replaceAll(" ", "-")}-${width}.png`), fullPage: true });
+    }
   }
 });
 

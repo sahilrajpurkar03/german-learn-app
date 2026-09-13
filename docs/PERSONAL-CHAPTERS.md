@@ -1,6 +1,15 @@
 # Personal Chapters
 
-Status: implemented behind an operator-controlled creation switch; not enabled or tested against live Groq/Supabase accounts. Free-plan configuration and a German quality review are launch gates. This is a limited personal beta, not unlimited free AI or certified language assessment.
+Status: implemented behind an operator-controlled creation switch; live activation and operation against Groq/Supabase accounts are not verified. Free-plan configuration and a German quality review are launch gates. This is a limited personal beta, not unlimited free AI or certified language assessment.
+
+## Remaining Setup (2026-09-13)
+
+- **Vercel:** the production site and master-branch automatic deployments are verified. The operator previously added variable names `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `CRON_SECRET`; their values, Production scopes, and effective deployment configuration are not verified. The dashboard currently requires sign-in. Confirm the `app/` root, server-only variables, active daily cleanup cron, and a successful authenticated cleanup execution. Keep `PERSONAL_CHAPTERS_ENABLED` unset/false until the following launch gates pass.
+- **Supabase:** dashboard access currently requires sign-in. Applying migration `0004_personal_chapters.sql`, the private audio bucket and policies, service-role configuration, and two-account database/Storage isolation are still unverified in production. Also verify production auth redirect URLs, real signup/recovery email delivery, backup recovery, and administrator MFA.
+- **Groq:** the settings URL currently leads to the sign-in home, not verified data controls. The operator reported completing retention settings, but effective ZDR, Free-plan/model availability, quotas, and a valid deployed key still need confirmation. No live generation or transcription benchmark has passed. Run a synthetic smoke test, review German quality, and check consented device audio before enabling creation.
+- **App limitations beyond provider setup:** detailed built-in recall/checkpoints remain device-local; full account export/deletion and local-data clearing are incomplete. Legacy score integrity and parent-session ownership issues remain in SECURITY-REVIEW.md. Physical phone/browser speech behavior and authenticated production workflows have not been established by mocked browser tests.
+
+These are verification gaps, not a claim that every setting is absent. No provider settings, feature switches, or production database records were changed during the mobile audit.
 
 ## Workflow
 
@@ -68,7 +77,7 @@ The local benchmark measures 1,000 schema-validation and mission-adaptation iter
 
 ### Live Benchmark Gate
 
-The user confirmed no Groq key is configured. The live command was executed and reported **blocked**, with no provider calls. ASR accuracy, real AI latency/token use, generated German quality, and production account isolation remain unverified.
+At the original benchmark attempt, no Groq key was configured and the live command reported **blocked**, with no provider calls. The operator later added the variable name in Vercel; its value and effective Production configuration have not been validated. ASR accuracy, real AI latency/token use, generated German quality, and production account isolation remain unverified.
 
 After privately configuring a **Free-plan** key and setting `GROQ_BENCHMARK_FREE_PLAN_CONFIRMED=true`:
 

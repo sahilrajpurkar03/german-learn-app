@@ -30,12 +30,16 @@ async function openLibrary(page: Page) {
 
 for (const mission of MISSIONS) {
   test(`complete chapter ${mission.id}`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await openLibrary(page);
     await page.getByLabel("Find a chapter").fill(mission.title);
     await page.locator(".mission-card").filter({ has: page.getByRole("heading", { name: mission.title, exact: true }) }).click();
     for (const turn of mission.turns) {
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      const clipped = await page.locator(".conversation h2, .conversation h3, .conversation p, .conversation button").evaluateAll((elements) => elements.filter((element) => element.clientWidth > 0 && element.scrollWidth > element.clientWidth + 2).map((element) => element.textContent));
+      expect(clipped).toEqual([]);
       if (turn.options) {
         await page.locator(".dialogue-options").getByRole("button", { name: turn.accepted[0], exact: true }).click();
       } else if (turn.words) {
@@ -318,6 +322,14 @@ test("mobile main views and conversation controls stay aligned", async ({ page }
       if (width < 700) {
         const icons = await page.locator(".studio-sidebar nav button svg").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
         expect(Math.max(...icons) - Math.min(...icons)).toBeLessThan(1);
+        const labels = await page.locator(".nav-mobile-label").evaluateAll((elements) => elements.map((element) => {
+          const label = element.getBoundingClientRect();
+          const button = element.parentElement!.getBoundingClientRect();
+          return { top: label.top, height: label.height, fits: label.left >= button.left && label.right <= button.right && element.scrollWidth <= element.clientWidth + 1 };
+        }));
+        expect(labels).toHaveLength(5);
+        expect(labels.every((label) => label.fits && label.height === 16)).toBe(true);
+        expect(Math.max(...labels.map((label) => label.top)) - Math.min(...labels.map((label) => label.top))).toBeLessThan(1);
         if (name === "My day") {
           const copy = await page.locator(".assessment-banner > span:nth-child(2)").boundingBox();
           const action = await page.locator(".assessment-banner .banner-link").boundingBox();
@@ -340,6 +352,72 @@ test("mobile main views and conversation controls stay aligned", async ({ page }
     const submit = await page.getByRole("button", { name: "Check reply", exact: true }).boundingBox();
     if (width <= 400) expect(Math.abs(form!.width - submit!.width)).toBeLessThan(1);
     await page.screenshot({ path: testInfo.outputPath(`reply-controls-${width}.png`), fullPage: true });
+  }
+});
+
+test("mobile public pages and learning flows do not clip text", async ({ page }, testInfo) => {
+  async function checkText(name: string, width: number) {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name).toBe(true);
+    const clipped = await page.locator("h1, h2, h3, p, button, a, label, summary, span, small").evaluateAll((elements) => elements.filter((element) => {
+      const box = element.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && element.clientWidth > 0 && element.scrollWidth > element.clientWidth + 2 && getComputedStyle(element).overflowX !== "auto";
+    }).map((element) => ({ tag: element.tagName, className: element.className, text: element.textContent?.slice(0, 80) })));
+    expect(clipped, name).toEqual([]);
+    if (await page.locator(".auth-page").count()) {
+      for (const colorScheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme });
+        const contrast = await page.locator(".auth-page h1, .auth-page label, .auth-page p, .auth-page a").evaluateAll((elements) => {
+          const luminance = (color: string) => {
+            const channels = color.match(/[\d.]+/g)!.slice(0, 3).map((value) => {
+              const channel = Number(value) / 255;
+              return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+            });
+            return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+          };
+          const background = luminance(getComputedStyle(document.querySelector(".auth-page")!).backgroundColor);
+          return elements.filter((element) => element.getBoundingClientRect().width > 0).map((element) => {
+            const foreground = luminance(getComputedStyle(element).color);
+            return (Math.max(background, foreground) + 0.05) / (Math.min(background, foreground) + 0.05);
+          });
+        });
+        expect(Math.min(...contrast), `${name} ${colorScheme} contrast`).toBeGreaterThanOrEqual(4.5);
+      }
+      await page.emulateMedia({ colorScheme: "light" });
+    }
+    await page.screenshot({ path: testInfo.outputPath(`${name}-${width}.png`), fullPage: true });
+  }
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const path of ["/", "/login", "/signup", "/auth/forgot-password", "/auth/reset-password", "/imprint", "/privacy", "/data-sharing", "/security"]) {
+      await page.goto(path);
+      await checkText(path.replaceAll("/", "-") || "home", width);
+    }
+    await page.goto("/preview");
+    await page.locator(".assessment-banner").click();
+    await checkText("assessment-setup", width);
+    await page.getByRole("button", { name: "Find my starting point", exact: true }).click();
+    for (let index = 0; index < 16; index++) {
+      await checkText(`assessment-question-${index}`, width);
+      await page.getByRole("button", { name: "Not sure yet" }).click();
+    }
+    await checkText("assessment-report", width);
+    await page.getByRole("button", { name: "Build my practice plan" }).click();
+    await page.getByRole("button", { name: "Daily practice", exact: true }).click();
+    await checkText("daily-round", width);
+    await page.goto("/preview");
+    await page.getByRole("button", { name: /Play listening challenge/ }).click();
+    await checkText("listening-challenge", width);
+    await page.getByRole("button", { name: "Enter the station", exact: true }).click();
+    for (let round = 0; round < 6; round++) {
+      await page.getByRole("button", { name: "Transcript support", exact: true }).click();
+      await checkText(`listening-board-${round}`, width);
+      await page.getByRole("button", { name: "Choose my train", exact: true }).click();
+      await page.locator(".departure-row").first().click();
+      await checkText(`listening-feedback-${round}`, width);
+      await page.getByRole("button", { name: "Next connection", exact: true }).click();
+    }
+    await checkText("listening-result", width);
+    await page.evaluate(() => localStorage.removeItem("sprechen-studio-v1:preview"));
   }
 });
 

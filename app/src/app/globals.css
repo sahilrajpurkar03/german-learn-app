@@ -25,6 +25,60 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.auth-page {
+  background: #f8faf7;
+  color: #213c32;
+  color-scheme: light;
+  font-family: var(--font-studio-sans), sans-serif;
+  padding: 40px 20px;
+}
+.auth-page > div {
+  width: 100%;
+  max-width: 24rem;
+  text-align: left;
+}
+.auth-page h1 {
+  color: #213c32;
+  font-family: var(--font-studio-display), serif;
+  font-size: 28px;
+  line-height: 1.25;
+}
+.auth-page h1, .auth-page p, .auth-page a {
+  overflow-wrap: anywhere;
+}
+.auth-page p { color: #52645a; line-height: 1.6; }
+.auth-page label { display: block; color: #213c32; }
+.auth-page input {
+  min-width: 0;
+  min-height: 44px;
+  background: #fff;
+  color: #213c32;
+  border-color: #92a69a;
+  border-radius: 6px;
+  font-size: 16px;
+}
+.auth-page input::placeholder { color: #65756e; opacity: 1; }
+.auth-page a { color: #225a43; text-decoration: underline; text-underline-offset: 3px; }
+.auth-page button[type="submit"] {
+  min-height: 44px;
+  border-radius: 6px;
+  background: #225a43;
+  color: #fff;
+  white-space: normal;
+}
+.auth-page button[type="submit"]:hover { background: #194832; }
+.auth-page :focus-visible { outline: 3px solid #57957b; outline-offset: 3px; }
+.auth-page [role="alert"] { color: #a62d2d; }
+.auth-page [role="status"] { color: #225a43; }
+.account-progress {
+  background: #f8faf7;
+  color: #213c32;
+  color-scheme: light;
+  font-family: var(--font-studio-sans), sans-serif;
+  overflow-wrap: anywhere;
+}
+.account-progress :focus-visible { outline: 3px solid #57957b; outline-offset: 3px; }
+
 @keyframes blink {
   0%, 92%, 100% { transform: scaleY(1); }
   96% { transform: scaleY(0.1); }
