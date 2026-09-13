@@ -3,6 +3,22 @@ export class ChapterHttpError extends Error {
   constructor(status: number, message: string) { super(message); this.status = status; }
 }
 
+export function providerFailure(error: unknown): never {
+  if (error instanceof ChapterHttpError) throw error;
+  const status = typeof error === "object" && error && "status" in error ? error.status : undefined;
+  if (status === 401 || status === 403)
+    throw new ChapterHttpError(503, "The AI provider rejected server access. The operator needs to check the API key and model permissions; changing your text will not fix this.");
+  if (status === 404)
+    throw new ChapterHttpError(503, "The configured AI model is unavailable. The operator needs to check the provider configuration.");
+  if (status === 429)
+    throw new ChapterHttpError(429, "The AI provider's free capacity is busy. Your text is still here; try again later.");
+  if (status === 400 || status === 422)
+    throw new ChapterHttpError(502, "The AI provider rejected the request. No result was saved; the operator needs to check provider compatibility.");
+  if (typeof status === "number" && status >= 500)
+    throw new ChapterHttpError(503, "The AI provider is temporarily unavailable. Your text is still here; try again later.");
+  throw new ChapterHttpError(422, "A complete, validated result could not be created. Keep your text and try a shorter, clearer passage. No new chapter was saved.");
+}
+
 export async function readChapterRequest(request: Request): Promise<unknown> {
   const origin = request.headers.get("origin");
   const requestUrl = new URL(request.url);

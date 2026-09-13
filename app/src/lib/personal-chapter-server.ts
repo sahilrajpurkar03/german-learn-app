@@ -10,7 +10,7 @@ import type { Json } from "./personal-database";
 import { createChapterAI } from "./chapter-ai";
 import { AUDIO_TYPES, chapterBlueprintSchema, chapterInputSchema, PERSONAL_LIMITS, progressSchema } from "./personal-chapters";
 import type { PersonalChapter } from "./personal-chapters";
-import { ChapterHttpError } from "./chapter-http";
+import { ChapterHttpError, providerFailure } from "./chapter-http";
 import { schedule } from "./srs";
 
 export const AUDIO_BUCKET = "personal-chapter-audio";
@@ -111,13 +111,6 @@ export async function clearAudio(client: Client, userId: string, id: string) {
     const removed = await client.storage.from(AUDIO_BUCKET).remove([job.audio_path]);
     databaseError(removed.error);
   }
-}
-
-function providerFailure(error: unknown): never {
-  if (error instanceof ChapterHttpError) throw error;
-  if (typeof error === "object" && error && "status" in error && error.status === 429)
-    throw new ChapterHttpError(429, "The AI provider's free capacity is busy. Your text is still here; try again later.");
-  throw new ChapterHttpError(422, "A complete, validated result could not be created. Keep your text and try a shorter, clearer passage. No new chapter was saved.");
 }
 
 export async function changePersonalLibrary(value: unknown) {
