@@ -3,6 +3,45 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
+test("session events remain bound to their parent owner", async () => {
+  const database = new PGlite();
+  try {
+    await database.exec(`
+      create role authenticated;
+      create schema auth;
+      create table auth.users(id uuid primary key, raw_user_meta_data jsonb);
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+      grant usage on schema public, auth to authenticated;
+      grant execute on function auth.uid() to authenticated;
+    `);
+    await database.exec(await readFile(new URL("../../supabase/migrations/0001_init.sql", import.meta.url), "utf8"));
+    await database.exec(await readFile(new URL("../../supabase/migrations/0005_session_event_ownership.sql", import.meta.url), "utf8"));
+    await database.exec("grant select, insert, update, delete on public.practice_sessions, public.session_events to authenticated");
+    const owner = "00000000-0000-4000-8000-000000000001";
+    const other = "00000000-0000-4000-8000-000000000002";
+    const session = "10000000-0000-4000-8000-000000000001";
+    const otherSession = "10000000-0000-4000-8000-000000000002";
+    await database.query("insert into auth.users(id) values($1),($2)", [owner, other]);
+    await database.query("insert into practice_sessions(id,user_id,mode) values($1,$2,'mixed'),($3,$4,'mixed')", [session, owner, otherSession, other]);
+    const insert = (parent, actor) => database.query("insert into session_events(session_id,user_id,item_type,item_id,exercise_type,correct) values($1,$2,'vocab',gen_random_uuid(),'mcq',true)", [parent, actor]);
+    await assert.rejects(() => insert(session, other), /foreign key/);
+    await database.exec("set role authenticated");
+    await database.query("select set_config('request.jwt.claim.sub', $1, false)", [owner]);
+    await insert(session, owner);
+    await assert.rejects(() => insert(otherSession, owner), /row-level security/);
+    await assert.rejects(() => database.query("update session_events set session_id=$1", [otherSession]), /row-level security/);
+    await database.query("select set_config('request.jwt.claim.sub', $1, false)", [other]);
+    assert.equal((await database.query("select * from session_events")).rows.length, 0);
+    await assert.rejects(() => insert(session, other), /row-level security/);
+    await database.query("select set_config('request.jwt.claim.sub', $1, false)", [owner]);
+    await database.query("delete from practice_sessions where id=$1", [session]);
+    await database.exec("reset role");
+    assert.equal((await database.query("select * from session_events")).rows.length, 0);
+  } finally {
+    await database.close();
+  }
+});
+
 test("private chapter migration enforces ownership, upload reservations, and global quotas", async () => {
   const database = new PGlite();
   try {

@@ -4,8 +4,18 @@ Status: implemented behind an operator-controlled creation switch; live activati
 
 ## Remaining Setup (2026-09-13)
 
-- **Vercel:** the production site and master-branch automatic deployments are verified. The operator previously added variable names `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `CRON_SECRET`; their values, Production scopes, and effective deployment configuration are not verified. The dashboard currently requires sign-in. Confirm the `app/` root, server-only variables, active daily cleanup cron, and a successful authenticated cleanup execution. Keep `PERSONAL_CHAPTERS_ENABLED` unset/false until the following launch gates pass.
-- **Supabase:** dashboard access currently requires sign-in. Applying migration `0004_personal_chapters.sql`, the private audio bucket and policies, service-role configuration, and two-account database/Storage isolation are still unverified in production. Also verify production auth redirect URLs, real signup/recovery email delivery, backup recovery, and administrator MFA.
+### Latest CLI Verification
+
+Vercel CLI confirms the three server secrets are present in Production, the current deployment is Ready, and the daily 03:00 UTC cleanup cron is enabled. Secret validity and successful cleanup execution are not verified; `PERSONAL_CHAPTERS_ENABLED` is absent from the Production project variable list.
+
+Read-only Supabase inspection of project `idoigmkvqnyrpifcvfqn` (German-Learn-App, Frankfurt) confirms the original learning tables have RLS enabled and the placement/check-in columns exist. All four personal-chapter tables, the private audio bucket, the reservation function, and the standard migration-history table are absent. Do not blindly push the initial migration over the existing schema.
+
+Migration `0005_session_event_ownership.sql` is prepared and passes isolated database tests alongside `0004`. It adds a composite parent-owner foreign key and tightens the event policy. Production currently has zero mismatched event/session owners. Neither migration was applied during this preparation.
+
+**Production change blocked on backup:** the backup listing returned WALG enabled, PITR disabled, and earliest/latest timestamps of zero, so no usable recovery point was verified. Local `pg_dump`, `pg_restore`, and Docker were not available. Establish and verify a private logical backup or provider recovery point before reconciling migration history and applying migrations. No production learner rows or schema were changed by this preparation.
+
+- **Vercel:** the production site, master-branch automatic deployments, `app/` root, Production scopes for the three server secrets, and active cleanup schedule are verified through CLI. Secret validity and a successful authenticated cleanup execution remain unverified. Keep `PERSONAL_CHAPTERS_ENABLED` unset/false until the following launch gates pass.
+- **Supabase:** CLI access is verified. Migration `0004_personal_chapters.sql` objects are confirmed missing; `0005` is prepared but unapplied. Backup verification blocks production changes. Service-role validity and two-account database/Storage isolation remain unverified. Also verify production auth redirect URLs, real signup/recovery email delivery, backup recovery, and administrator MFA.
 - **Groq:** the settings URL currently leads to the sign-in home, not verified data controls. The operator reported completing retention settings, but effective ZDR, Free-plan/model availability, quotas, and a valid deployed key still need confirmation. No live generation or transcription benchmark has passed. Run a synthetic smoke test, review German quality, and check consented device audio before enabling creation.
 - **App limitations beyond provider setup:** detailed built-in recall/checkpoints remain device-local; full account export/deletion and local-data clearing are incomplete. Legacy score integrity and parent-session ownership issues remain in SECURITY-REVIEW.md. Physical phone/browser speech behavior and authenticated production workflows have not been established by mocked browser tests.
 
