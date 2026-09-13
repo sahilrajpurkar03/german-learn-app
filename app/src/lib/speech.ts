@@ -42,7 +42,7 @@ interface SpeechRecognitionResultLike {
 }
 
 interface SpeechRecognitionEventLike extends Event {
-  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
+  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike> & { isFinal?: boolean }>;
 }
 
 export interface SpeechRecognitionLike extends EventTarget {
@@ -51,6 +51,8 @@ export interface SpeechRecognitionLike extends EventTarget {
   maxAlternatives: number;
   start(): void;
   stop(): void;
+  abort?(): void;
+  onstart?: (() => void) | null;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onerror: ((event: Event) => void) | null;
   onend: (() => void) | null;
@@ -71,37 +73,71 @@ export function isSpeechRecognitionSupported(): boolean {
   return getSpeechRecognitionCtor() !== null;
 }
 
-export function listenOnce(lang = "de-DE", signal?: AbortSignal): Promise<string> {
+export function listenOnce(lang = "de-DE", signal?: AbortSignal, options?: {
+  onStarted?: () => void;
+  onTranscript?: (text: string) => void;
+  stopSignal?: AbortSignal;
+}): Promise<string> {
   return new Promise((resolve, reject) => {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
-      reject(new Error("Speech recognition is not supported in this browser."));
+      reject(new Error("Speech-to-text is unavailable in this browser. Open Sprechen in Chrome or Safari, or type your reply."));
+      return;
+    }
+    if (window.isSecureContext === false) {
+      reject(new Error("Microphone access requires HTTPS. Open the secure Sprechen website, or type your reply."));
       return;
     }
     const recognition = new Ctor();
     recognition.lang = lang;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     let settled = false;
+    let latestTranscript = "";
     const finish = (error?: Error, transcript = "") => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
-      recognition.stop();
+      options?.stopSignal?.removeEventListener("abort", stop);
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.onstart = null;
+      try { if (error && recognition.abort) recognition.abort(); else recognition.stop(); } catch {}
       if (error) reject(error);
       else resolve(transcript);
     };
     const abort = () => finish(new Error("Recording stopped."));
-    const timer = setTimeout(() => finish(new Error("No speech received. Try again or type your reply.")), 15000);
-    signal?.addEventListener("abort", abort, { once: true });
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript ?? "";
-      finish(transcript ? undefined : new Error("No speech received. Try again."), transcript);
+    const stop = () => {
+      try { recognition.stop(); } catch { finish(undefined, latestTranscript); }
     };
-    recognition.onerror = () => finish(new Error("Microphone unavailable. Check permission, or type your reply."));
-    recognition.onend = () => finish(new Error("No speech received. Try again or type your reply."));
-    if (signal?.aborted) { abort(); return; }
+    const timer = setTimeout(() => finish(latestTranscript ? undefined : new Error("No speech received. Check your microphone and try again, or type your reply."), latestTranscript), 30000);
+    signal?.addEventListener("abort", abort, { once: true });
+    options?.stopSignal?.addEventListener("abort", stop, { once: true });
+    recognition.onstart = () => { if (!settled) options?.onStarted?.(); };
+    recognition.onresult = (event) => {
+      latestTranscript = Array.from(event.results).map((result) => result[0]?.transcript ?? "").join(" ").trim();
+      if (latestTranscript) options?.onTranscript?.(latestTranscript);
+      if (Array.from(event.results).every((result) => result.isFinal !== false)) {
+        finish(latestTranscript ? undefined : new Error("No speech received. Try again."), latestTranscript);
+      }
+    };
+    recognition.onerror = (event) => {
+      const code = (event as Event & { error?: string }).error;
+      const messages: Record<string, string> = {
+        "not-allowed": "Microphone permission was denied. Allow microphone access in your browser's site settings and your device settings, then try again.",
+        "service-not-allowed": "Your browser's speech recognition service is disabled. Try Chrome or Safari with speech recognition enabled, or type your reply.",
+        "audio-capture": "No microphone audio is available. Check your input device and whether another app is using it.",
+        network: "The browser's speech service could not connect. Check your internet connection, or type your reply.",
+        "no-speech": "No speech was detected. Move closer to the microphone and try again, or type your reply.",
+        "language-not-supported": "German speech recognition is unavailable in this browser. Try another supported browser, or type your reply.",
+        aborted: "Speech recognition was interrupted. Try again, or type your reply.",
+      };
+      finish(new Error(messages[code ?? ""] ?? "Speech recognition could not start. Check browser microphone settings, or type your reply."));
+    };
+    recognition.onend = () => finish(latestTranscript ? undefined : new Error("No speech received. Try again or type your reply."), latestTranscript);
+    if (signal?.aborted || options?.stopSignal?.aborted) { abort(); return; }
     try { recognition.start(); } catch { finish(new Error("Could not start the microphone.")); }
   });
 }

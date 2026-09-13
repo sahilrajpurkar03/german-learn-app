@@ -16,6 +16,10 @@
 
 `/preview?mode=review` provides four sample review formats without creating sessions or writing cloud history. The normal `/preview` can exercise the local adaptive loop without an account or AI calls.
 
+Speech-to-text now displays interim recognition in the reply field. The mic starts in a pending state, shows listening only after the browser starts recognition, and preserves the transcript when Stop is pressed. Leaving the turn cancels recognition and ignores late results. Permission, input-device, network, and unsupported-browser failures have distinct messages. Browser speech recognition still depends on browser support, device permission, and the browser's speech service; an exposed API alone does not establish that the service works (including embedded browsers). No paid or server transcription fallback was added.
+
+Mobile checks cover the five main views and conversation controls at 320px and 390px, plus landscape and desktop layouts. Narrow-screen reply actions stack, speech controls have 44px touch targets, navigation labels are centered, and the assessment action sits below its copy. Safe-area padding remains available for bottom navigation.
+
 The existing `sprechen-studio-v1:<userId>` record has defaulted recall and checkpoint fields, so old saved state is retained. It stores identifiers, aggregate counts, last-response state, and scheduling dates, not typed replies or recordings. `attempts` counts completed response observations, not every keystroke or retry. Daily rounds now preserve their target order, starting recall snapshot, next response, score, and completion. Each completed response and checkpoint save together. Resuming does not record that response again. Finished rounds remain visible until another round is explicitly started.
 
 The review preview also saves its next response and completion locally, separately from real recall evidence and cloud history. Explicit replay resets only that preview checkpoint. Earlier preview completions from before this change cannot be recovered because they were never stored. Authenticated legacy cloud review sessions still use their existing server-created session and scheduling flow; they do not gain cross-device checkpoint synchronization in this change.
@@ -32,6 +36,7 @@ No schema migration, AI activation, provider call, credential change, or product
 - `npm run build`: production webpack build and TypeScript.
 - `npm run test:e2e`: chapter completion, adaptive sessions, persistence, supported answers, review preview formats, mobile/desktop rendering, actual browser CSS animation state, reduced motion, and existing security/personal-chapter regressions.
 - Speech services and personal APIs are mocked in browser checks. Physical-device audio, actual authenticated legacy saves, and cross-device reconciliation are not established by those tests.
+- Microphone regressions cover pending cancellation, interim text, Stop, permission/network/input/no-speech errors, retry, and leaving the turn. Unit checks exercise recognition cleanup and transcript retention.
 
 ## Next Stages
 

@@ -6,9 +6,11 @@ import { listenOnce, speakGerman } from "@/lib/speech";
 export function useVoice(autoText?: string, onStarted?: () => void) {
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const playback = useRef<(() => void) | null>(null);
   const recording = useRef<AbortController | null>(null);
+  const finishRecording = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   const notifyStarted = useEffectEvent(() => {
     if (mounted.current) {
@@ -67,11 +69,26 @@ export function useVoice(autoText?: string, onStarted?: () => void) {
   async function record(onTranscript: (text: string) => void) {
     stop();
     const controller = new AbortController();
+    const finishController = new AbortController();
     recording.current = controller;
-    setListening(true);
+    finishRecording.current = finishController;
+    setStarting(true);
+    setListening(false);
     setError(null);
     try {
-      const transcript = await listenOnce("de-DE", controller.signal);
+      const transcript = await listenOnce("de-DE", controller.signal, {
+        stopSignal: finishController.signal,
+        onStarted: () => {
+          if (mounted.current && recording.current === controller && !controller.signal.aborted) {
+            setStarting(false);
+            setListening(true);
+          }
+        },
+        onTranscript: (text) => {
+          if (mounted.current && recording.current === controller && !controller.signal.aborted)
+            onTranscript(text);
+        },
+      });
       if (mounted.current && !controller.signal.aborted)
         onTranscript(transcript);
     } catch (cause) {
@@ -82,10 +99,18 @@ export function useVoice(autoText?: string, onStarted?: () => void) {
             : "Could not record. You can type your reply instead.",
         );
     } finally {
-      if (mounted.current && recording.current === controller)
+      if (mounted.current && recording.current === controller) {
+        setStarting(false);
         setListening(false);
+        recording.current = null;
+        finishRecording.current = null;
+      }
     }
   }
 
-  return { speaking, listening, error, play, record, stop };
+  function finish() {
+    finishRecording.current?.abort();
+  }
+
+  return { speaking, listening, starting, error, play, record, stop, finish };
 }

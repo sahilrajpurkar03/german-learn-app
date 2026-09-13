@@ -385,13 +385,15 @@ function ConversationTurn({
                   disabled={result !== null}
                   className={`secondary ${voice.listening ? "recording" : ""}`}
                   onClick={() => {
-                    if (voice.listening) voice.stop();
+                    if (voice.starting) voice.stop();
+                    else if (voice.listening) voice.finish();
                     else void voice.record(setValue);
                   }}
                 >
-                  {voice.listening ? <Square size={17} /> : <Mic size={17} />}
-                  {voice.listening ? "Stop recording" : "Speak my reply"}
+                  {voice.listening || voice.starting ? <Square size={17} /> : <Mic size={17} />}
+                  {voice.starting ? "Cancel microphone" : voice.listening ? "Stop recording" : "Speak my reply"}
                 </button>
+                {(voice.starting || voice.listening) && <span role="status">{voice.starting ? "Starting microphone..." : "Listening..."}</span>}
                 <small>Speech-to-text, not a pronunciation score.</small>
               </div>
             </>
@@ -478,7 +480,7 @@ function ConversationTurn({
             <span className="muted">No timer. No lost lives.</span>
             <button
               className="primary"
-              disabled={!response.trim() || voice.listening}
+              disabled={!response.trim() || voice.listening || voice.starting}
               onClick={check}
             >
               Check reply <ArrowRight size={17} />

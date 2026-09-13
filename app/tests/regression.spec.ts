@@ -254,6 +254,95 @@ test("redesigned review preview supports every exercise and responsive character
   expect(state.recall).toEqual({});
 });
 
+test("microphone shows live dictation, keeps text on stop, and recovers from errors", async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    class Recognition {
+      onstart: (() => void) | null = null;
+      onresult: ((event: unknown) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      listener = (event: Event) => {
+        const { type, text, error } = (event as CustomEvent).detail;
+        if (type === "start") this.onstart?.();
+        if (type === "result") this.onresult?.({ results: [Object.assign([{ transcript: text }], { isFinal: false })] });
+        if (type === "error") this.onerror?.({ error });
+      };
+      start() { window.addEventListener("test-speech", this.listener); }
+      stop() { window.removeEventListener("test-speech", this.listener); this.onend?.(); }
+      abort() { window.removeEventListener("test-speech", this.listener); }
+    }
+    Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: Recognition });
+  });
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/preview?mode=review");
+  await page.getByRole("button", { name: "Start review", exact: true }).click();
+  await answerPracticeTurn(page, reviewMission(reviewPreviewItems).turns[0]);
+  const speak = page.getByRole("button", { name: "Speak my reply", exact: true });
+  const reply = page.getByRole("textbox", { name: "Your reply" });
+  await speak.click();
+  await expect(page.getByText("Starting microphone...", { exact: true })).toBeVisible();
+  await expect(page.locator(".conversation-character")).not.toHaveAttribute("data-state", "listening");
+  await page.getByRole("button", { name: "Cancel microphone", exact: true }).click();
+  await expect(speak).toBeVisible();
+  await speak.click();
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("test-speech", { detail: { type: "start" } })));
+  await expect(page.locator(".conversation-character")).toHaveAttribute("data-state", "listening");
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("test-speech", { detail: { type: "result", text: "Der Zug kommt später." } })));
+  await expect(reply).toHaveValue("Der Zug kommt später.");
+  await expect(page.getByRole("button", { name: "Check reply", exact: true })).toBeDisabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("mobile-live-dictation.png"), fullPage: true });
+  await page.getByRole("button", { name: "Stop recording", exact: true }).click();
+  await expect(reply).toHaveValue("Der Zug kommt später.");
+  await expect(page.getByRole("button", { name: "Check reply", exact: true })).toBeEnabled();
+  for (const [error, message] of [["not-allowed", "permission was denied"], ["network", "speech service could not connect"], ["audio-capture", "No microphone audio"], ["no-speech", "No speech was detected"]]) {
+    await speak.click();
+    await page.evaluate((error) => window.dispatchEvent(new CustomEvent("test-speech", { detail: { type: "error", error } })), error);
+    await expect(page.locator(".error-note")).toContainText(message);
+    await expect(speak).toBeVisible();
+    await expect(reply).toHaveValue("Der Zug kommt später.");
+  }
+  await speak.click();
+  await page.getByRole("button", { name: "My day", exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("test-speech", { detail: { type: "result", text: "Late transcript" } })));
+  await expect(page.getByRole("heading", { name: "Your roadmap", exact: true })).toBeVisible();
+});
+
+test("mobile main views and conversation controls stay aligned", async ({ page }, testInfo) => {
+  await page.goto("/preview");
+  for (const width of [320, 390, 844, 1440]) {
+    await page.setViewportSize({ width, height: width === 844 ? 390 : 844 });
+    for (const name of ["My day", "Real-life practice", "My chapters", "My phrases", "My progress"]) {
+      await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name, exact: true }).click();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name} at ${width}px`).toBe(true);
+      if (width < 700) {
+        const icons = await page.locator(".studio-sidebar nav button svg").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
+        expect(Math.max(...icons) - Math.min(...icons)).toBeLessThan(1);
+        if (name === "My day") {
+          const copy = await page.locator(".assessment-banner > span:nth-child(2)").boundingBox();
+          const action = await page.locator(".assessment-banner .banner-link").boundingBox();
+          expect(action!.y).toBeGreaterThanOrEqual(copy!.y + copy!.height);
+          expect(Math.abs(action!.x - copy!.x)).toBeLessThan(1);
+        }
+      }
+      await page.screenshot({ path: testInfo.outputPath(`${name.replaceAll(" ", "-")}-${width}.png`), fullPage: true });
+    }
+  }
+  await page.goto("/preview?mode=review");
+  await page.getByRole("button", { name: "Start review", exact: true }).click();
+  await answerPracticeTurn(page, reviewMission(reviewPreviewItems).turns[0]);
+  for (const width of [320, 390, 844, 1440]) {
+    await page.setViewportSize({ width, height: width === 844 ? 390 : 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const tools = await page.locator(".speech-tools > button").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().height));
+    if (width < 700) expect(Math.min(...tools)).toBeGreaterThanOrEqual(44);
+    const form = await page.locator(".conversation-submit").boundingBox();
+    const submit = await page.getByRole("button", { name: "Check reply", exact: true }).boundingBox();
+    if (width <= 400) expect(Math.abs(form!.width - submit!.width)).toBeLessThan(1);
+    await page.screenshot({ path: testInfo.outputPath(`reply-controls-${width}.png`), fullPage: true });
+  }
+});
+
 test("character movement follows speech playback and respects reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/preview?mode=review");

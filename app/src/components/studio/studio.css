@@ -1256,6 +1256,10 @@
   font-size: 10px;
   color: var(--muted);
 }
+.response-tools [role="status"] {
+  font-size: 12px;
+  color: var(--green);
+}
 .recording {
   background: #fff0e7 !important;
   border-color: #c58161 !important;
@@ -1867,7 +1871,7 @@
 @media (max-width: 700px) {
   .studio-shell {
     display: block;
-    padding-bottom: 77px;
+    padding-bottom: calc(77px + env(safe-area-inset-bottom, 0px));
   }
   .studio-sidebar {
     position: fixed;
@@ -1889,6 +1893,7 @@
   }
   .studio-sidebar nav button {
     flex-direction: column;
+    text-align: center;
     gap: 4px;
     padding: 8px 2px;
     font-size: 9px;
@@ -1940,7 +1945,8 @@
     margin-bottom: 26px;
   }
   .assessment-banner > span:nth-child(2) {
-    flex: 1;
+    flex: 1 1 calc(100% - 51px);
+    min-width: 0;
   }
   .assessment-banner .banner-link {
     max-width: none;
@@ -2104,7 +2110,11 @@
     font-size: 22px;
   }
   .speech-tools {
-    gap: 15px;
+    gap: 8px;
+  }
+  .speech-tools > button {
+    min-width: 44px;
+    min-height: 44px;
   }
   .dialogue-options .answer-option {
     font-size: 13px;
@@ -2136,6 +2146,20 @@
   }
   .profile-stats span {
     font-size: 10px;
+  }
+}
+@media (max-width: 400px) {
+  .conversation-submit {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .conversation-submit > span {
+    max-width: none;
+    text-align: center;
+  }
+  .response-tools > button {
+    width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
