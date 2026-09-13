@@ -1,165 +1,62 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import type { SessionItem } from "@/lib/content";
 import { recordAnswer, completeSession } from "@/lib/session-actions";
-import { McqExercise } from "@/components/exercises/mcq-exercise";
-import { ListenTypeExercise } from "@/components/exercises/listen-type-exercise";
-import { WordBankExercise } from "@/components/exercises/word-bank-exercise";
-import { SpeakExercise } from "@/components/exercises/speak-exercise";
-import { TalkingCharacter, type MascotMood } from "@/components/talking-character";
+import { adaptiveReviewItems, reviewMission } from "@/lib/review-mission";
+import { recordRecall } from "@/lib/adaptive-practice";
+import { ConversationRoom } from "./studio/conversation-room";
+import { useStudioStore } from "./studio/studio-store";
+import "./studio/studio.css";
 
 interface Props {
   sessionId: string;
   items: SessionItem[];
+  userId: string;
+  preview?: boolean;
 }
 
-const XP_PER_CORRECT = 10;
-const STREAK_BONUS_EVERY = 3;
-
-export function SessionRunner({ sessionId, items }: Props) {
-  const router = useRouter();
-  const [index, setIndex] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [startedAt] = useState(() => Date.now());
-  const [itemStartedAt, setItemStartedAt] = useState(() => Date.now());
+export function SessionRunner({ sessionId, items, userId, preview = false }: Props) {
+  const { state, update } = useStudioStore(userId);
+  const [practiceItems, setPracticeItems] = useState<SessionItem[] | null>(null);
+  const [startedAt, setStartedAt] = useState(() => Date.now());
   const [finished, setFinished] = useState(false);
-  const [xpEarned, setXpEarned] = useState(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
-  const [mood, setMood] = useState<MascotMood>("idle");
-  const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
-
-  const current = items[index];
-
-  function showToast(text: string) {
-    setToast({ key: Date.now(), text });
-    window.setTimeout(() => setToast(null), 1100);
+  const [correct, setCorrect] = useState(0);
+  const [saveError, setSaveError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const cloudSaved = useRef(new Set<number>());
+  const home = preview ? "/preview" : "/learn";
+  async function finish(count: number) {
+    setSaving(true);
+    setSaveError(false);
+    try { if (!preview) await completeSession(sessionId, count * 10); }
+    catch { setSaveError(true); }
+    finally { setSaving(false); }
   }
-
-  async function handleResult(correct: boolean) {
-    const responseMs = Date.now() - itemStartedAt;
-    if (correct) setCorrectCount((c) => c + 1);
-
-    const newStreak = correct ? streak + 1 : 0;
-    setStreak(newStreak);
-    setBestStreak((b) => Math.max(b, newStreak));
-    setMood(correct ? "happy" : "sad");
-    window.setTimeout(() => setMood("idle"), 900);
-
-    if (correct) {
-      const bonus = newStreak > 0 && newStreak % STREAK_BONUS_EVERY === 0 ? newStreak * 2 : 0;
-      showToast(bonus > 0 ? `+${XP_PER_CORRECT + bonus} XP · 🔥 streak x${newStreak}!` : `+${XP_PER_CORRECT} XP`);
-    }
-
-    await recordAnswer({
-      sessionId,
-      itemType: current.itemType,
-      itemId: current.id,
-      exerciseType: current.exercise,
-      correct,
-      responseMs,
-    });
-
-    if (index + 1 >= items.length) {
-      const earned = (correctCount + (correct ? 1 : 0)) * XP_PER_CORRECT;
-      setXpEarned(earned);
-      setElapsedSeconds(Math.round((Date.now() - startedAt) / 1000));
-      await completeSession(sessionId, earned);
-      setFinished(true);
-    } else {
-      setIndex((i) => i + 1);
-      setItemStartedAt(Date.now());
-    }
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="text-center">
-        <p className="text-neutral-300">No content available yet. Please seed the content database.</p>
-      </div>
-    );
-  }
-
-  if (finished) {
-    const accuracy = Math.round((correctCount / items.length) * 100);
-    return (
-      <div className="mx-auto max-w-md space-y-6 text-center">
-        <TalkingCharacter speaking={false} mood={accuracy >= 60 ? "happy" : "sad"} onClick={undefined} size="lg" />
-        <h1 className="text-2xl font-semibold text-neutral-50">Session complete!</h1>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 py-3">
-            <p className="text-lg font-bold text-neutral-50">{correctCount}/{items.length}</p>
-            <p className="text-xs text-neutral-500">Correct</p>
-          </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 py-3">
-            <p className="text-lg font-bold text-neutral-50">🔥 {bestStreak}</p>
-            <p className="text-xs text-neutral-500">Best streak</p>
-          </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 py-3">
-            <p className="text-lg font-bold text-neutral-50">+{xpEarned}</p>
-            <p className="text-xs text-neutral-500">XP · {elapsedSeconds}s</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => router.push("/learn")}
-          className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-lg shadow-blue-600/20 transition active:scale-[0.98] hover:bg-blue-500"
-        >
-          Back to dashboard
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative mx-auto w-full max-w-md space-y-6">
-      {toast && (
-        <div
-          key={toast.key}
-          className="animate-float-up-fade pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-full bg-neutral-800 px-4 py-1.5 text-sm font-semibold text-emerald-300 shadow-lg"
-        >
-          {toast.text}
-        </div>
-      )}
-
-      <div className="flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-800">
-          <div
-            className="h-full bg-blue-600 transition-all"
-            style={{ width: `${((index + 1) / items.length) * 100}%` }}
-          />
-        </div>
-        {streak > 0 && (
-          <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-400">
-            🔥 {streak}
-          </span>
-        )}
-      </div>
-
-      {(current.exercise === "mcq" || current.exercise === "word_bank") && (
-        <div className="flex justify-center">
-          <TalkingCharacter speaking={false} mood={mood} onClick={undefined} />
-        </div>
-      )}
-
-      {current.itemType === "vocab" && current.exercise === "mcq" && (
-        <McqExercise item={current} onResult={handleResult} />
-      )}
-      {current.itemType === "vocab" && current.exercise === "listen_type" && (
-        <ListenTypeExercise targetText={current.lemma} hintEn={current.translationEn} onResult={handleResult} />
-      )}
-      {current.itemType === "phrase" && current.exercise === "listen_type" && (
-        <ListenTypeExercise targetText={current.deText} hintEn={current.enText} onResult={handleResult} />
-      )}
-      {current.itemType === "phrase" && current.exercise === "word_bank" && (
-        <WordBankExercise targetText={current.deText} hintEn={current.enText} onResult={handleResult} />
-      )}
-      {current.itemType === "phrase" && current.exercise === "speak" && (
-        <SpeakExercise targetText={current.deText} hintEn={current.enText} onResult={handleResult} />
-      )}
-    </div>
-  );
+  return <div className="studio-shell review-studio-shell">
+    <header className="review-studio-header"><Link href={home} className="review-wordmark">Sprechen<span>.</span></Link><Link href={home} className="text-button"><ArrowLeft size={17} /> My day</Link></header>
+    <main className="studio-main review-studio-main">
+      {preview && <p className="preview-tag">Review preview. Cloud history is not changed.</p>}
+      {items.length === 0 ? <section className="daily-practice"><h1>You&apos;re up to date.</h1><p>No cloud review items are available right now. Your daily practice has more situations to explore.</p><Link className="primary" href={home}>Back to my day <ArrowRight size={18} /></Link></section>
+        : finished ? <section className="daily-practice studio-panel-entry"><span className="eyebrow">RECALL PRACTICE COMPLETE</span><h1>Keep it with you.</h1><p className="lede">{correct} of {items.length} responses without support.</p><p>{saving ? "Saving your session..." : saveError ? "Your session summary could not be saved." : preview ? "Preview complete." : "Your responses have been added to your learning history."}</p>{saveError && <button className="secondary" disabled={saving} onClick={() => void finish(correct)}><RotateCcw size={18} /> Retry saving summary</button>}<Link className="primary" href={home}>Back to my day <ArrowRight size={18} /></Link></section>
+          : !practiceItems ? <section className="daily-practice"><span className="eyebrow">FROM YOUR LEARNING HISTORY</span><h1>A fresh way to revisit.</h1><p>{items.length} responses ready for practice.</p><button className="primary" onClick={() => { setPracticeItems(adaptiveReviewItems(items, state.recall)); setStartedAt(Date.now()); }}>Start review <ArrowRight size={18} /></button></section>
+          : <ConversationRoom mission={reviewMission(practiceItems)} initialIndex={0} initialCorrect={0} savedTexts={[]} onSave={() => {}} showBookmarks={false} exitLabel="My day"
+            onExit={() => { window.location.assign(home); }} onProgress={() => {}}
+            onTurnResult={async (index, independent) => {
+              const item = practiceItems[index];
+              if (!preview && !cloudSaved.current.has(index)) {
+                await recordAnswer({ sessionId, itemType: item.itemType, itemId: item.id, exerciseType: item.exercise, correct: independent, responseMs: Math.max(0, Date.now() - startedAt) });
+                cloudSaved.current.add(index);
+              }
+              if (!preview) {
+                const id = `cloud:${item.itemType}:${item.id}:${item.exercise}`;
+                if (!update((current) => ({ ...current, recall: { ...current.recall, [id]: recordRecall(current.recall[id], independent, new Date()) } }))) throw new Error("Local evidence could not save");
+              }
+              setStartedAt(Date.now());
+            }}
+            onComplete={(count) => { setCorrect(count); setFinished(true); void finish(count); }} />}
+    </main>
+  </div>;
 }

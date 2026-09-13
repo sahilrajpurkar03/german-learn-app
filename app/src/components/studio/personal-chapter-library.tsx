@@ -10,9 +10,12 @@ import { chapterRequest, getPersonalLibrary } from "./personal-chapter-client";
 import type { PersonalLibrary } from "./personal-chapter-client";
 import { ConversationRoom } from "./conversation-room";
 import { useVoice } from "./use-voice";
+import { useStudioStore } from "./studio-store";
+import { recordRecall } from "@/lib/adaptive-practice";
 import "./personal-chapters.css";
 
-export function PersonalChapterLibrary({ preview }: { preview: boolean }) {
+export function PersonalChapterLibrary({ preview, userId }: { preview: boolean; userId: string }) {
+  const { update } = useStudioStore(userId);
   const [library, setLibrary] = useState<PersonalLibrary>({ chapters: [], reviews: [], available: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +78,13 @@ export function PersonalChapterLibrary({ preview }: { preview: boolean }) {
     {library.message && <p className="personal-notice" role="status">{library.message}</p>}
     {active ? <>
       <div className="personal-save-status" role="status">{library.demo ? "Sample practice; progress is not saved" : saving ? "Saving progress..." : "Private chapter practice"}</div>
-      <ConversationRoom key={`${active.chapter.id}:${active.variant}`} mission={personalMission(active.chapter, active.variant)} initialIndex={active.progress.index} initialCorrect={active.progress.correct} savedTexts={[]} onSave={() => {}} showBookmarks={false} selfCheckReplies exitLabel="My chapters" onProgress={(index, correct) => progress({ op: "progress", id: active.chapter.id, variant: active.variant, progress: { index, correct, completed: false } })} onComplete={(correct) => progress({ op: "progress", id: active.chapter.id, variant: active.variant, progress: { index: active.chapter.blueprint[active.variant].turns.length, correct, completed: true } })} onExit={() => { void progressQueue.current.then(async () => { setActive(null); if (!library.demo) await reload(); }).catch((failure: Error) => setError(failure.message)); }} />
+      <ConversationRoom key={`${active.chapter.id}:${active.variant}`} mission={personalMission(active.chapter, active.variant)} initialIndex={active.progress.index} initialCorrect={active.progress.correct} savedTexts={[]} onSave={() => {}} showBookmarks={false} selfCheckReplies exitLabel="My chapters"
+        onTurnResult={(index, independent) => {
+          if (library.demo) return;
+          const id = `personal:${active.chapter.id}:${active.variant}:${index}`;
+          if (!update((current) => ({ ...current, recall: { ...current.recall, [id]: recordRecall(current.recall[id], independent, new Date()) } }))) throw new Error("Local evidence could not save");
+        }}
+        onProgress={(index, correct) => progress({ op: "progress", id: active.chapter.id, variant: active.variant, progress: { index, correct, completed: false } })} onComplete={(correct) => progress({ op: "progress", id: active.chapter.id, variant: active.variant, progress: { index: active.chapter.blueprint[active.variant].turns.length, correct, completed: true } })} onExit={() => { void progressQueue.current.then(async () => { setActive(null); if (!library.demo) await reload(); }).catch((failure: Error) => setError(failure.message)); }} />
     </> : chapter ? <>
       <div className="personal-detail-toolbar"><button className="text-button" onClick={() => { voice.stop(); setSelected(null); }}><ArrowLeft size={17} />All my chapters</button><div><button className="icon-button" title="Export chapter" aria-label="Export chapter" onClick={() => exportChapter(chapter)}><Download size={19} /></button>{!library.demo && <button className="icon-button" title="Delete chapter" aria-label="Delete chapter" onClick={() => setRemoving(chapter.id)}><Trash2 size={19} /></button>}</div></div>
       <div className="page-heading"><div><span className="eyebrow">{library.demo ? "SAMPLE" : "PRIVATE AI DRAFT"} / {chapter.blueprint.level.toUpperCase()} / {chapter.blueprint.register === "formal" ? "SIE" : "DU"}</span><h1>{chapter.blueprint.title}</h1><p>{chapter.blueprint.summary}</p></div></div>
@@ -99,7 +108,7 @@ export function PersonalChapterLibrary({ preview }: { preview: boolean }) {
         {query && !library.chapters.some((entry) => `${entry.blueprint.title} ${entry.blueprint.summary}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())) && <p>No chapters match your search.</p>}
       </>}
     </>}
-    {removing && <DeleteChapterDialog busy={busy} onCancel={() => setRemoving(null)} onDelete={() => { void mutate({ op: "delete", id: removing }).then((saved) => { if (saved) { setRemoving(null); setSelected(null); } }); }} />}
+    {removing && <DeleteChapterDialog busy={busy} onCancel={() => setRemoving(null)} onDelete={() => { void mutate({ op: "delete", id: removing }).then((saved) => { if (saved) { if (!update((current) => ({ ...current, recall: Object.fromEntries(Object.entries(current.recall).filter(([id]) => !id.startsWith(`personal:${removing}:`))) }))) setError("Chapter deleted from your account, but local recall evidence could not be cleared. Clear site data to remove it from this browser."); setRemoving(null); setSelected(null); } }); }} />}
     {voice.error && <p role="alert" className="error-note">{voice.error}</p>}
   </section>;
 }

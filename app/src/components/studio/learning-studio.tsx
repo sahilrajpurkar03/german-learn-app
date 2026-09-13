@@ -42,6 +42,8 @@ import { PersonalChapterLibrary } from "./personal-chapter-library";
 import { StationChallenge } from "./station-challenge";
 import { useStudioStore } from "./studio-store";
 import { useVoice } from "./use-voice";
+import { DailyPractice, RecallOverview } from "./daily-practice";
+import { recordRecall } from "@/lib/adaptive-practice";
 import "./studio.css";
 
 type View =
@@ -53,6 +55,7 @@ type View =
   | "assessment"
   | "conversation"
   | "game";
+type PracticeView = View | "practice";
 interface Props {
   userId: string;
   stats?: DashboardStats;
@@ -73,7 +76,7 @@ export function LearningStudio({
   logoutAction,
 }: Props) {
   const { state, update } = useStudioStore(userId);
-  const [view, setView] = useState<View>(
+  const [view, setView] = useState<PracticeView>(
     initialAssessment ? "assessment" : "today",
   );
   const [missionId, setMissionId] = useState(MISSIONS[0].id);
@@ -129,7 +132,7 @@ export function LearningStudio({
         "Browser storage is unavailable. This activity will not be saved on this device.",
       );
   }
-  function navigate(next: View) {
+  function navigate(next: PracticeView) {
     voice.stop();
     setView(next);
     setNotice(null);
@@ -266,6 +269,8 @@ export function LearningStudio({
                   ? "Skill assessment"
                   : view === "game"
                     ? "Platform Switch"
+                  : view === "practice"
+                    ? "Daily practice"
                   : nav.find((entry) => entry.id === view)?.title}
             </strong>
           </span>
@@ -285,6 +290,12 @@ export function LearningStudio({
           </div>
         </header>
         <main className="studio-main" id="main-content">
+          {view === "practice" && <DailyPractice userId={userId} onExit={() => navigate("today")} />}
+          {(view === "today" || view === "profile" || view === "situations") && <section className="adaptive-launch">
+            <div><span className="eyebrow">RECALL, THEN SOMETHING NEW</span><h2>Your next practice is ready.</h2></div>
+            <button className="primary" onClick={() => navigate("practice")}><RotateCcw size={18} /> Daily practice <ArrowRight size={18} /></button>
+          </section>}
+          {view === "profile" && <RecallOverview record={state.recall} />}
           {view === "game" && (
             <StationChallenge
               best={state.gameBest}
@@ -553,7 +564,7 @@ export function LearningStudio({
                             fill
                             sizes="(max-width: 700px) 90vw, 300px"
                           />
-                          <span>{entry.minutes} MIN</span>
+                          <span>{entry.turns.length} TURNS</span>
                           {state.completed[entry.id] && (
                             <i>
                               <Check size={17} />
@@ -626,7 +637,7 @@ export function LearningStudio({
                         fill
                         sizes="(max-width: 700px) 95vw, 500px"
                       />
-                      <span>{entry.minutes} MIN</span>
+                      <span>{entry.turns.length} TURNS</span>
                     </div>
                     <div>
                       <small>
@@ -647,14 +658,13 @@ export function LearningStudio({
                   <Plus size={18} /> Show more chapters
                 </button>
               )}
-              {!preview && (
-                <Link className="review-link" href="/learn/session">
+              {(
+                <Link className="review-link" href={preview ? "/preview?mode=review" : "/learn/session"}>
                   <RotateCcw size={20} />
                   <span>
-                    Spaced-repetition practice
+                    Recall studio
                     <strong>
-                      {stats?.dueCount ?? 0} items due from your existing
-                      learning history
+                      {preview ? "Try the redesigned review" : `${stats?.dueCount ?? 0} items due from your learning history`}
                     </strong>
                   </span>
                   <ArrowRight size={18} />
@@ -662,7 +672,7 @@ export function LearningStudio({
               )}
             </section>
           )}
-          {view === "personal" && <PersonalChapterLibrary preview={preview} />}
+          {view === "personal" && <PersonalChapterLibrary preview={preview} userId={userId} />}
           {view === "assessment" && (
             <>
               <button
@@ -695,6 +705,10 @@ export function LearningStudio({
               }
               savedTexts={state.phrases.map((phrase) => phrase.text)}
               onSave={bookmark}
+              onTurnResult={(index, independent) => {
+                const id = `${missionId}:${index}`;
+                if (!update((current) => ({ ...current, recall: { ...current.recall, [id]: recordRecall(current.recall[id], independent, new Date()) } }))) throw new Error("Storage unavailable");
+              }}
               onProgress={(index, correct) =>
                 persist((current) => ({
                   ...current,

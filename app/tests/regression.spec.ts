@@ -1,6 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
 import { MISSIONS } from "../src/lib/learning-content";
 import { normalizeAnswer } from "../src/lib/learning-engine";
+import { planPractice, practiceTargets, recordRecall } from "../src/lib/adaptive-practice";
+import { variationTargets } from "../src/lib/practice-variations";
+import { reviewMission, reviewPreviewItems } from "../src/lib/review-mission";
+import type { MissionTurn } from "../src/lib/learning-content";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -161,4 +165,101 @@ test("browser rendering and chapter search performance baseline", async ({ page 
   expect(result.searchP95Ms).toBeLessThan(2000);
   expect(result.domContentLoadedMs).toBeLessThan(5000);
   await page.screenshot({ path: testInfo.outputPath("chapter-library-desktop.png"), fullPage: true });
+});
+
+async function answerPracticeTurn(page: Page, turn: MissionTurn) {
+  if (turn.options) await page.locator(".dialogue-options").getByRole("button", { name: turn.accepted[0], exact: true }).click();
+  else if (turn.words) {
+    for (const word of turn.accepted[0].split(/\s+/)) await page.locator(".word-tiles button:enabled").filter({ hasText: new RegExp(`^${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) }).first().click();
+  } else await page.getByRole("textbox", { name: "Your reply" }).fill(turn.accepted[0]);
+  await page.getByRole("button", { name: "Check reply", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+}
+
+test("adaptive daily practice remains available after all chapters and preserves old completion", async ({ page }) => {
+  await page.addInitScript((ids) => {
+    if (localStorage.getItem("sprechen-studio-v1:preview")) return;
+    localStorage.setItem("sprechen-studio-v1:preview", JSON.stringify({ version: 1, goal: 10, interest: "Everyday life", answers: [], assessedAt: null, draft: null, completed: Object.fromEntries(ids.map((id) => [id, { at: new Date().toISOString(), correct: 1, total: 4 }])), phrases: [] }));
+  }, MISSIONS.map((mission) => mission.id));
+  await page.goto("/preview");
+  await page.getByRole("button", { name: "Daily practice", exact: true }).click();
+  await expect(page.getByText("No response-level recall evidence yet.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Start daily practice" }).click();
+  const queue = planPractice(practiceTargets(MISSIONS), {}, new Date(), 3);
+  for (const target of queue) await answerPracticeTurn(page, target.turn);
+  await expect(page.getByRole("heading", { name: "Today's practice, carried forward." })).toBeVisible();
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("sprechen-studio-v1:preview")!));
+  expect(Object.keys(stored.completed)).toHaveLength(50);
+  expect(Object.keys(stored.recall)).toHaveLength(3);
+  expect(Object.values(stored.recall).every((entry: unknown) => (entry as { delayed: number }).delayed === 0)).toBe(true);
+  await page.getByRole("button", { name: "Done for today" }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "Daily practice", exact: true }).click();
+  await expect(page.getByText("3 responses practised on this device.", { exact: false })).toBeVisible();
+});
+
+test("adaptive priority and retry support are recorded without a mastery claim", async ({ page }) => {
+  const targets = practiceTargets(MISSIONS);
+  const now = new Date();
+  const future = new Date(now.getTime() + 86400000);
+  const record = Object.fromEntries(targets.map((target) => [target.id, recordRecall(undefined, true, future)]));
+  const target = targets.find((entry) => entry.id === "supermarket:0")!;
+  record[target.id] = recordRecall(undefined, false, new Date(now.getTime() - 3 * 86400000));
+  await page.addInitScript((recall) => localStorage.setItem("sprechen-studio-v1:preview", JSON.stringify({ version: 1, goal: 10, interest: "Everyday life", answers: [], assessedAt: null, draft: null, completed: {}, phrases: [], recall })), record);
+  await page.goto("/preview");
+  await page.getByRole("button", { name: "Daily practice", exact: true }).click();
+  await page.getByRole("button", { name: "Start daily practice" }).click();
+  await expect(page.getByRole("heading", { name: target.turn.task })).toBeVisible();
+  await page.getByRole("button", { name: "Translation", exact: true }).click();
+  await answerPracticeTurn(page, target.turn);
+  const saved = await page.evaluate((id) => JSON.parse(localStorage.getItem("sprechen-studio-v1:preview")!).recall[id], target.id);
+  expect(saved.lastIndependent).toBe(false);
+  expect(saved.supported).toBe(2);
+  expect(saved.delayed).toBe(0);
+});
+
+test("adaptive new-context follow-up unlocks after delayed recall", async ({ page }) => {
+  const variation = variationTargets(MISSIONS)[0];
+  const first = recordRecall(undefined, true, new Date(Date.now() - 4 * 86400000));
+  const recalled = recordRecall(first, true, new Date(Date.now() - 2 * 86400000));
+  await page.addInitScript(({ id, evidence }) => localStorage.setItem("sprechen-studio-v1:preview", JSON.stringify({ version: 1, goal: 10, interest: "Everyday life", answers: [], assessedAt: null, draft: null, completed: {}, phrases: [], recall: { [id]: evidence } })), { id: variation.prerequisite!, evidence: recalled });
+  await page.goto("/preview");
+  await page.getByRole("button", { name: "Daily practice", exact: true }).click();
+  await page.getByRole("button", { name: "Start daily practice" }).click();
+  const queue = planPractice([...practiceTargets(MISSIONS), ...variationTargets(MISSIONS)], { [variation.prerequisite!]: recalled }, new Date(), 3);
+  for (const target of queue) {
+    await expect(page.getByRole("heading", { name: target.turn.task })).toBeVisible();
+    await answerPracticeTurn(page, target.turn);
+  }
+  const saved = await page.evaluate((id) => JSON.parse(localStorage.getItem("sprechen-studio-v1:preview")!).recall[id], variation.id);
+  expect(saved.independent).toBe(1);
+  expect(saved.delayed).toBe(0);
+});
+
+test("redesigned review preview supports every exercise and responsive character", async ({ page }, testInfo) => {
+  await page.goto("/preview?mode=review");
+  await page.getByRole("button", { name: "Start review", exact: true }).click();
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.locator(".conversation-character")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.locator(".scene-image").evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`review-character-${width}.png`), fullPage: true });
+  }
+  for (const turn of reviewMission(reviewPreviewItems).turns) await answerPracticeTurn(page, turn);
+  await expect(page.getByRole("heading", { name: "Keep it with you." })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("sprechen-studio-v1:preview"))).toBeNull();
+});
+
+test("character movement follows speech playback and respects reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/preview?mode=review");
+  await page.getByRole("button", { name: "Start review", exact: true }).click();
+  await page.evaluate(() => { speechSynthesis.speak = (utterance) => utterance.dispatchEvent(new Event("start")); });
+  await page.getByRole("button", { name: "Replay German audio", exact: true }).click();
+  await expect(page.locator(".conversation-character")).toHaveAttribute("data-state", "speaking");
+  const motion = await page.locator(".character-mouth").evaluate((element) => element.getAnimations().map((animation) => animation.playState));
+  expect(motion).toContain("running");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect.poll(() => page.locator(".character-mouth").evaluate((element) => element.getAnimations().length)).toBe(0);
 });

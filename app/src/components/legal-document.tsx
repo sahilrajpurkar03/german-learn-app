@@ -18,7 +18,7 @@ export function LegalDocument({ page }: { page: LegalPage }) {
       <article>
         <Link href="/preview">Sprechen</Link>
         <h1>{legalTitles[page]}</h1>
-        <p>Last updated: 12 September 2026. Personal, non-commercial beta project.</p>
+        <p>Last updated: 13 September 2026. Personal, non-commercial beta project.</p>
         {!legalDetailsComplete && (
           <p className="legal-draft" role="note">
             Draft legal information: complete operator contact details, including a full postal address, have not yet been confirmed. A town, postcode, and country alone do not supply a street and house number. These pages are not a completed legal notice. Provider locations, contracts, and retention settings also require operator verification before broader public testing.
@@ -46,7 +46,7 @@ export function LegalDocument({ page }: { page: LegalPage }) {
           <ul>
             <li><strong>Account data:</strong> email address, authentication identifiers, optional display name, and credentials handled by Supabase Auth to create and secure accounts. The app does not store a separate plaintext password database.</li>
             <li><strong>Cloud learning records:</strong> starting band, daily goal, check-in dates, XP, streaks, spaced-repetition results, session timestamps, exercise correctness, and response times support progress and review scheduling.</li>
-            <li><strong>Browser-local progress:</strong> assessment answers, chosen interests, chapter completion, conversation checkpoints, saved phrases, review dates, and game scores are stored in this browser, including during the public preview. They are not automatically synchronised across devices. Submitted placement answers are also sent to the app server for validation; only the resulting profile fields are explicitly persisted by that action.</li>
+            <li><strong>Browser-local progress:</strong> assessment answers, chosen interests, chapter completion, conversation checkpoints, saved phrases, review dates, and game scores are stored in this browser, including during the public preview. Per-response recall evidence stores item identifiers, supported and unaided response counts, practice dates, and review schedules, not a copy of your typed replies. This evidence helps select daily practice and includes local observations from cloud reviews and personal chapters. These local records are not automatically synchronised across devices. Submitted placement answers are also sent to the app server for validation; only the resulting profile fields are explicitly persisted by that action.</li>
             <li><strong>Personal chapters, when enabled:</strong> selected audio, reviewed transcripts, communication goals, German level, and formality settings are processed to create private learning material. Generated scenarios, short source excerpts, chapter checkpoints, and selected phrase reviews are saved to owner-restricted Supabase tables. The full submitted transcript is not saved with the chapter. Temporary transcription results and job metadata have separate retention below.</li>
             <li><strong>Technical requests:</strong> hosting and authentication providers receive information such as IP address, request URL, browser information, and request time to deliver and secure the service. Operational logs may contain this information. Avoid including personal data in URLs or free-text replies.</li>
           </ul>

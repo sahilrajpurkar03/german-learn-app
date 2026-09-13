@@ -19,17 +19,20 @@ import {
 import type { Mission, MissionTurn } from "@/lib/learning-content";
 import { isAccepted } from "@/lib/learning-engine";
 import { useVoice } from "./use-voice";
+import { ConversationCharacter } from "./conversation-character";
 
 interface Props {
   mission: Mission;
   selfCheckReplies?: boolean;
   showBookmarks?: boolean;
   exitLabel?: string;
+  turnContexts?: Mission[];
   initialIndex: number;
   initialCorrect: number;
   savedTexts: string[];
   onSave: (id: string, text: string, meaning: string) => void;
   onProgress: (index: number, correct: number) => void;
+  onTurnResult?: (index: number, independent: boolean) => void | Promise<void>;
   onComplete: (correct: number) => void;
   onExit: () => void;
 }
@@ -39,11 +42,13 @@ export function ConversationRoom({
   selfCheckReplies = false,
   showBookmarks = true,
   exitLabel = "My plan",
+  turnContexts,
   initialIndex,
   initialCorrect,
   savedTexts,
   onSave,
   onProgress,
+  onTurnResult,
   onComplete,
   onExit,
 }: Props) {
@@ -52,9 +57,21 @@ export function ConversationRoom({
   );
   const [correct, setCorrect] = useState(initialCorrect);
   const [finished, setFinished] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const turn = mission.turns[index];
 
-  function advance(independent: boolean) {
+  async function advance(independent: boolean) {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(false);
+    try {
+      await onTurnResult?.(index, independent);
+    } catch {
+      setSaveError(true);
+      setSaving(false);
+      return;
+    }
     const nextCorrect = correct + (independent ? 1 : 0);
     setCorrect(nextCorrect);
     if (index + 1 === mission.turns.length) {
@@ -64,6 +81,7 @@ export function ConversationRoom({
       setIndex(index + 1);
       onProgress(index + 1, nextCorrect);
     }
+    setSaving(false);
   }
 
   if (finished)
@@ -142,9 +160,11 @@ export function ConversationRoom({
         </span>
       </div>
       <progress max={mission.turns.length} value={index} />
+      {saveError && <p role="alert" className="error-note">Your response could not be saved. Continue to retry.</p>}
+      <fieldset disabled={saving} className="conversation-turn-fieldset">
       <ConversationTurn
         key={`${mission.id}-${index}`}
-        mission={mission}
+        mission={turnContexts?.[index] ?? mission}
         turn={turn}
         selfCheckReplies={selfCheckReplies}
         showBookmarks={showBookmarks}
@@ -154,6 +174,7 @@ export function ConversationRoom({
         }
         saved={savedTexts.includes(turn.accepted[0])}
       />
+      </fieldset>
     </section>
   );
 }
@@ -213,23 +234,10 @@ function ConversationTurn({
         <div className="scene-shade" />
         <div className="partner-details">
           <span className="scene-tag">GUIDED CONVERSATION</span>
-          <div
-            className={`partner-portrait ${voice.speaking ? "is-speaking" : ""}`}
-          >
-            <Image
-              src={`/images/${mission.partner.toLowerCase()}.jpg`}
-              alt=""
-              width={88}
-              height={88}
-            />
-            <span className="voice-indicator">
-              {[0, 1, 2, 3, 4].map((index) => (
-                <i key={index} style={{ animationDelay: `${index * 110}ms` }} />
-              ))}
-            </span>
-          </div>
+          <ConversationCharacter speaking={voice.speaking} listening={voice.listening} response={result} name={mission.partner} />
           <h2>{mission.partner}</h2>
           <p>{mission.role}</p>
+          <p>{mission.place}</p>
           <span className="partner-status" aria-live="polite">
             {voice.speaking
               ? "Speaking..."
@@ -294,7 +302,7 @@ function ConversationTurn({
               aria-expanded={translation}
               onClick={() => {
                 setTranslation(!translation);
-                if (turn.kind === "listen") setAssisted(true);
+                if (!translation) setAssisted(true);
               }}
             >
               Translation

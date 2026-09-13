@@ -18,6 +18,24 @@
   letter-spacing: 0;
   color-scheme: light;
 }
+.conversation-turn-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.studio-shell.review-studio-shell { display: block; }
+.review-studio-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 5%; border-bottom: 1px solid var(--line); background: #fff; gap: 16px; }
+.review-studio-main { max-width: 1180px; margin: auto; }
+.review-wordmark { font-size: 28px; font-weight: 800; }
+.review-wordmark span { color: #65a276; }
+.adaptive-launch { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--line); margin-bottom: 24px; flex-wrap: wrap; }
+.daily-practice { display: grid; gap: 24px; max-width: 900px; }
+.daily-practice > button { justify-self: start; }
+.recall-overview { padding: 20px 0; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+.recall-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+.recall-counts strong { display: block; font-size: 30px; color: var(--green); }
+.recall-counts span { display: block; font-size: 13px; }
+.recall-focus { list-style: none; margin: 20px 0 0; padding: 0; }
+.recall-focus li { display: flex; justify-content: space-between; gap: 20px; padding: 16px 0; border-top: 1px solid var(--line); }
+.recall-focus small { display: block; color: var(--muted); }
+.recall-focus li > span { font-size: 12px; color: var(--green); text-align: right; }
+@media (max-width: 600px) { .recall-counts { gap: 10px; } .recall-focus li { flex-direction: column; gap: 6px; } .recall-focus li > span { text-align: left; } }
 .studio-shell * {
   box-sizing: border-box;
 }
@@ -1813,12 +1831,12 @@
   .partner-details .scene-tag {
     margin-bottom: 15px;
   }
-  .partner-portrait {
+  .partner-details > .conversation-character {
     position: absolute;
-    left: 20px;
-    top: 47px;
-    width: 79px;
-    height: 79px;
+    left: 3px;
+    top: 15px;
+    transform: scale(.6);
+    transform-origin: top left;
   }
   .partner-portrait img {
     width: 67px;

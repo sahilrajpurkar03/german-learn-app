@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { z } from "zod";
+import { evidenceSchema } from "@/lib/adaptive-practice";
 
 const answerSchema = z.object({
   id: z.string(),
@@ -15,6 +16,7 @@ const schema = z.object({
   answers: z.array(answerSchema),
   assessedAt: z.string().nullable(),
   gameBest: z.number().nonnegative().default(0),
+  recall: z.record(z.string(), evidenceSchema).default({}),
   draft: z
     .object({
       missionId: z.string(),
@@ -45,6 +47,7 @@ const initial: StudioState = {
   answers: [],
   assessedAt: null,
   gameBest: 0,
+  recall: {},
   draft: null,
   completed: {},
   phrases: [],
