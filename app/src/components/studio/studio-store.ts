@@ -17,6 +17,21 @@ const schema = z.object({
   assessedAt: z.string().nullable(),
   gameBest: z.number().nonnegative().default(0),
   recall: z.record(z.string(), evidenceSchema).default({}),
+  reviewPreview: z.object({
+    signature: z.string(),
+    index: z.number().int().nonnegative(),
+    correct: z.number().int().nonnegative(),
+    completedAt: z.string().datetime().nullable(),
+  }).nullable().default(null),
+  dailyRoundsCompleted: z.number().int().nonnegative().default(0),
+  dailyRound: z.object({
+    id: z.string(),
+    targetIds: z.array(z.string()).min(1).max(12),
+    initialRecall: z.record(z.string(), evidenceSchema),
+    index: z.number().int().nonnegative(),
+    correct: z.number().int().nonnegative(),
+    completedAt: z.string().datetime().nullable(),
+  }).refine((round) => round.index <= round.targetIds.length && round.correct <= round.index).nullable().default(null),
   draft: z
     .object({
       missionId: z.string(),
@@ -48,6 +63,9 @@ const initial: StudioState = {
   assessedAt: null,
   gameBest: 0,
   recall: {},
+  reviewPreview: null,
+  dailyRoundsCompleted: 0,
+  dailyRound: null,
   draft: null,
   completed: {},
   phrases: [],

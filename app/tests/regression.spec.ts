@@ -248,7 +248,10 @@ test("redesigned review preview supports every exercise and responsive character
   }
   for (const turn of reviewMission(reviewPreviewItems).turns) await answerPracticeTurn(page, turn);
   await expect(page.getByRole("heading", { name: "Keep it with you." })).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem("sprechen-studio-v1:preview"))).toBeNull();
+  const state = await page.evaluate(() => JSON.parse(localStorage.getItem("sprechen-studio-v1:preview")!));
+  expect(state.reviewPreview.index).toBe(4);
+  expect(state.reviewPreview.completedAt).toBeTruthy();
+  expect(state.recall).toEqual({});
 });
 
 test("character movement follows speech playback and respects reduced motion", async ({ page }) => {
@@ -262,4 +265,74 @@ test("character movement follows speech playback and respects reduced motion", a
   expect(motion).toContain("running");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect.poll(() => page.locator(".character-mouth").evaluate((element) => element.getAnimations().length)).toBe(0);
+});
+
+test("review preview resumes after reload and completed review stays completed", async ({ page }) => {
+  await page.goto("/preview?mode=review");
+  await page.getByRole("button", { name: "Start review", exact: true }).click();
+  const turns = reviewMission(reviewPreviewItems).turns;
+  await answerPracticeTurn(page, turns[0]);
+  await page.reload();
+  await expect(page.getByText("1 of 4 responses completed. Next: response 2.")).toBeVisible();
+  await page.getByRole("button", { name: "Resume review", exact: true }).click();
+  await expect(page.getByRole("heading", { name: turns[1].task })).toBeVisible();
+  for (const turn of turns.slice(1)) await answerPracticeTurn(page, turn);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Keep it with you." })).toBeVisible();
+  await expect(page.getByText("4 of 4 responses without support.")).toBeVisible();
+  await page.getByRole("link", { name: "Back to my day" }).click();
+  await expect(page.locator(".practice-roadmap")).toContainText("Review preview completed");
+  await page.getByRole("link", { name: "View completed review" }).click();
+  await page.getByRole("button", { name: "Replay review", exact: true }).click();
+  await page.getByRole("button", { name: "Start review", exact: true }).click();
+  await expect(page.getByRole("heading", { name: turns[0].task })).toBeVisible();
+});
+
+test("daily round resumes exact next response and roadmap retains completion", async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("sprechen-studio-v1:preview")) localStorage.setItem("sprechen-studio-v1:preview", JSON.stringify({ version: 1, goal: 10, interest: "Everyday life", answers: [], assessedAt: null, draft: null, completed: {}, phrases: [] }));
+  });
+  await page.goto("/preview");
+  await page.getByRole("button", { name: "Open daily round", exact: true }).click();
+  await page.getByRole("button", { name: "Start daily practice", exact: true }).click();
+  const queue = planPractice(practiceTargets(MISSIONS), {}, new Date(), 3);
+  await answerPracticeTurn(page, queue[0].turn);
+  await page.getByRole("button", { name: "My plan", exact: true }).click();
+  await page.reload();
+  await expect(page.locator(".practice-roadmap")).toContainText("Daily round in progress: 1 of 3 responses");
+  await expect(page.locator(".roadmap-active")).toContainText("1 of 5 responses tracked");
+  await page.getByRole("button", { name: "Resume daily round", exact: true }).click();
+  await page.getByRole("button", { name: "Resume daily practice", exact: true }).click();
+  await expect(page.getByRole("heading", { name: queue[1].turn.task })).toBeVisible();
+  for (const target of queue.slice(1)) await answerPracticeTurn(page, target.turn);
+  await page.getByRole("button", { name: "Done for today", exact: true }).click();
+  await page.reload();
+  await expect(page.locator(".practice-roadmap")).toContainText("Daily round complete: 3 of 3 responses");
+  await expect(page.locator(".practice-roadmap")).toContainText("1 daily round completed");
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("sprechen-studio-v1:preview")!));
+  expect(stored.recall[queue[0].id].attempts).toBe(1);
+  expect(stored.dailyRound.correct).toBe(3);
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`roadmap-${width}.png`), fullPage: true });
+  }
+  await page.locator(".roadmap-active").getByRole("button", { name: "Open situation" }).click();
+  await expect(page.getByRole("heading", { name: MISSIONS[0].turns[3].task })).toBeVisible();
+  await page.getByRole("button", { name: "My plan", exact: true }).click();
+  await page.getByRole("button", { name: "View round & next steps", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Today's practice, carried forward." })).toBeVisible();
+  await page.getByRole("button", { name: "Practise another round", exact: true }).click();
+  await expect(page.getByRole("heading", { name: MISSIONS[0].turns[3].task })).toBeVisible();
+});
+
+test("roadmap advances after chapter completion and keeps the next position on reload", async ({ page }) => {
+  await page.goto("/preview");
+  await page.locator(".roadmap-active").getByRole("button", { name: "Open situation" }).click();
+  for (const turn of MISSIONS[0].turns) await answerPracticeTurn(page, turn);
+  await page.getByRole("button", { name: "Back to my plan", exact: true }).click();
+  await page.reload();
+  await expect(page.locator(".practice-roadmap")).toContainText("1 of 50 situations explored");
+  await expect(page.locator(".roadmap-active")).toContainText(MISSIONS[1].title);
+  await expect(page.locator(".roadmap-complete")).toContainText(MISSIONS[0].title);
 });

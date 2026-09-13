@@ -42,7 +42,7 @@ import { PersonalChapterLibrary } from "./personal-chapter-library";
 import { StationChallenge } from "./station-challenge";
 import { useStudioStore } from "./studio-store";
 import { useVoice } from "./use-voice";
-import { DailyPractice, RecallOverview } from "./daily-practice";
+import { DailyPractice, RecallOverview, PracticeRoadmap } from "./daily-practice";
 import { recordRecall } from "@/lib/adaptive-practice";
 import "./studio.css";
 
@@ -109,7 +109,7 @@ export function LearningStudio({
   const topics = [...new Set(MISSIONS.map(chapterTopic))].sort();
   const chapters = filterChapters(MISSIONS, filter, chapterQuery, chapterProgress, state.completed);
   const recommended =
-    ordered.find((entry) => !state.completed[entry.id]) ?? ordered[0];
+    ordered.find((entry) => !state.completed[entry.id] && !entry.turns.every((_, index) => state.recall[`${entry.id}:${index}`])) ?? ordered[0];
   const plan = ordered.slice(
     0,
     Math.min(4, Math.max(1, Math.round(state.goal / 8))),
@@ -146,11 +146,16 @@ export function LearningStudio({
     }
     setNotice(null);
     setMissionId(id);
-    if (!state.draft)
+    if (!state.draft) {
+      const selected = MISSIONS.find((entry) => entry.id === id)!;
+      const firstUntracked = selected.turns.findIndex((_, index) => !state.recall[`${id}:${index}`]);
+      const index = !state.completed[id] && firstUntracked > 0 ? firstUntracked : 0;
+      const correct = selected.turns.slice(0, index).filter((_, turnIndex) => state.recall[`${id}:${turnIndex}`]?.lastIndependent).length;
       persist((current) => ({
         ...current,
-        draft: { missionId: id, index: 0, correct: 0 },
+        draft: { missionId: id, index, correct },
       }));
+    }
     navigate("conversation");
   }
   function bookmark(id: string, text: string, meaning: string) {
@@ -290,6 +295,7 @@ export function LearningStudio({
           </div>
         </header>
         <main className="studio-main" id="main-content">
+          {view === "today" && <PracticeRoadmap state={state} preview={preview} onPractice={() => navigate("practice")} onChapter={startMission} />}
           {view === "practice" && <DailyPractice userId={userId} onExit={() => navigate("today")} />}
           {(view === "today" || view === "profile" || view === "situations") && <section className="adaptive-launch">
             <div><span className="eyebrow">RECALL, THEN SOMETHING NEW</span><h2>Your next practice is ready.</h2></div>
