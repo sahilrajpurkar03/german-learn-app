@@ -960,6 +960,11 @@ export function LearningStudio({
                   Account review history <ArrowRight size={18} />
                 </Link>
               )}
+              {!preview && (
+                <Link className="review-link" href="/account">
+                  Account & privacy: name, password, your data <ArrowRight size={18} />
+                </Link>
+              )}
             </section>
           )}
         </main>

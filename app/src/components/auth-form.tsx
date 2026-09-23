@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import type { AuthFormState } from "@/lib/auth-actions";
 import { PasswordInput } from "./password-input";
+import { GoogleSignIn } from "./google-sign-in";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -16,6 +17,7 @@ export function AuthForm({ mode, action }: AuthFormProps) {
 
   return (
     <form action={formAction} className="w-full max-w-sm space-y-4">
+      <GoogleSignIn label={isSignup ? "Sign up with Google" : "Continue with Google"} />
       {isSignup && (
         <div className="space-y-1">
           <label htmlFor="displayName" className="text-sm font-medium text-neutral-200">

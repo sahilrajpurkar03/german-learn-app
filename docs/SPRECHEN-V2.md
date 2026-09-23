@@ -77,6 +77,31 @@ v1 spread learning over nine views in one 979-line component, four separate revi
 6. **Switch everyone over** with `V2_DEFAULT=true` in Vercel. The old `/learn` URLs then redirect to the new screens.
 7. **Later: retire v1.** Once v2 has been the default for a while and nobody needs v1, remove the v1 studio, `/preview`, `SessionRunner` and their tests, then drop `topics`, `vocab_items`, `phrases`, `item_progress`, `practice_sessions`, `session_events` and `personal_chapter_reviews` in a new migration. This was not done here because v1 is still the production default.
 
+## Account & privacy, and Google sign-in
+
+`/account` works in both app versions for any signed-in user. It is linked from **Me** in v2 and from the studio's progress view in v1. It lets the learner:
+- change their name
+- change their password (the current one is required), or set one if they signed up with Google
+- read the privacy, data-sharing, security and imprint pages
+- **download all their data** as JSON (`/api/account/export`, read through RLS)
+- **clear Sprechen's data from this browser** (saved places, the offline queue, cached audio, preferences)
+- **delete the account** after typing DELETE (`/api/account/delete`). This removes stored recordings first, then deletes the auth user; every table cascades.
+
+Deletion and export have **not** been run against production yet. Try them once with a test account.
+
+**Google sign-in** (`components/google-sign-in.tsx`) is hidden until it is configured:
+1. **Google Cloud Console** → APIs & Services:
+   - Set up the **OAuth consent screen** (External; app name Sprechen; your support email).
+   - Go to **Credentials → Create credentials → OAuth client ID → Web application**.
+   - Add this **Authorized redirect URI**: `https://<your-project-ref>.supabase.co/auth/v1/callback`. The exact value is shown in the next step.
+2. **Supabase** → Authentication → **Sign In / Providers → Google**: enable it, paste the Client ID and Client secret, and save. Supabase shows the callback URL to use in step 1.
+3. **Supabase** → Authentication → **URL Configuration**:
+   - Set **Site URL** to `https://app-dusky-nine-52.vercel.app`.
+   - Add these **Redirect URLs**: `https://app-dusky-nine-52.vercel.app/auth/callback` and, for previews, `https://*-sparc1.vercel.app/auth/callback`.
+4. **Vercel** → Environment Variables: add `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` for **Production** (and Preview, with no branch selected). Then redeploy.
+
+After Google sign-in, `/auth/callback?next=/learn` exchanges the code, uses the Google name instead of the default "Learner", and only redirects to same-site paths.
+
 ## Authoring more content
 
 Add a unit file in `app/src/content/<level>/`, register it in `index.ts`, and run `npm test`. The validator (`lib/course/validate.ts`) enforces:

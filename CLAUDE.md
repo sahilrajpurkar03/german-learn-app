@@ -89,10 +89,14 @@ The service worker (`src/app/sw.ts` → `public/sw.js`, Serwist):
 
 ## Environment variables
 
-Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
+Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` (`true` shows "Continue with Google"; Google must be enabled in Supabase first). In Vercel, give every variable **Production** and **Preview** with no branch selected. A branch-scoped variable can't be Production, and that once took production login down.
 Server-only (never prefix with `NEXT_PUBLIC_`): `SUPABASE_SERVICE_ROLE_KEY` (v2 progress writes and personal chapters), `GROQ_API_KEY`, `CRON_SECRET` (≥32 chars, also authorizes `/api/push/dispatch`), `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
 Flags: `V2_DEFAULT=true` makes v2 the default. `PERSONAL_CHAPTERS_ENABLED=true` enables AI chapter creation; if it's missing, or any server secret is missing, creation is disabled but saved chapters stay readable.
 Legal disclosure overrides (build time): `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_OPERATOR_ADDRESS_CONFIRMED`. Defaults are in `lib/legal.ts`.
+
+## Account
+
+`/account` (outside the v2 route groups, so it works in both versions) holds name, password, data export (`/api/account/export`), clearing this device's data, and account deletion (`/api/account/delete`: removes recordings from Storage, then `auth.admin.deleteUser`; all tables cascade). `/auth/callback` serves both password-reset links and Google OAuth (`?next=`, same-site paths only).
 
 ## Database changes
 

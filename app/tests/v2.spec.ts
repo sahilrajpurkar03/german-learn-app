@@ -94,3 +94,19 @@ test("voice clips are public static files, and private v2 pages need an account"
   const api = await request.post("/api/learning/attempts", { data: { attempts: [] }, headers: { Origin: "http://127.0.0.1:3200" } });
   expect(api.status()).toBe(401);
 });
+
+test("account & privacy: signed-out access is refused and login explains outcomes", async ({ page, request }) => {
+  await page.goto("/account");
+  await expect(page).toHaveURL(/\/login(\?|$)/);
+  expect((await request.get("/api/account/export")).status()).toBe(401);
+  const origin = { Origin: "http://127.0.0.1:3200" };
+  expect((await request.post("/api/account/delete", { data: { confirm: "DELETE" }, headers: origin })).status()).toBe(401);
+  await page.goto("/login?deleted=1");
+  await expect(page.getByRole("status").filter({ hasText: "account and its learning data have been deleted" })).toBeVisible();
+  await page.goto("/login?error=google");
+  await expect(page.getByRole("alert").filter({ hasText: "Google sign-in didn't complete" })).toBeVisible();
+  // The Google button only appears once it is configured (NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true).
+  await expect(page.getByRole("button", { name: /Google/ })).toHaveCount(0);
+  const callback = await request.get("/auth/callback?next=//evil.example&error=access_denied", { maxRedirects: 0 });
+  expect(callback.headers().location).not.toContain("evil.example");
+});

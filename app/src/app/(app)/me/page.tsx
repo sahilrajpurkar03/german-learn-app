@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Compass, LogOut } from "lucide-react";
+import { ArrowRight, BarChart3, Compass, LogOut, ShieldCheck } from "lucide-react";
 import { displayName, requireSnapshot } from "@/lib/learning/guard";
 import { logout } from "@/lib/auth-actions";
 import { visibleStreak } from "@/lib/course/activity";
@@ -43,6 +43,7 @@ export default async function MePage() {
       </ul>
 
       <nav className="grid gap-3" aria-label="Your learning">
+        <Link href="/account" className="flex items-center gap-3 rounded-2xl border-2 border-line bg-surface px-4 py-4 font-semibold transition hover:border-brand"><ShieldCheck size={20} className="text-brand" aria-hidden="true" /><span className="flex-1">Account & privacy<span className="block text-sm font-normal text-ink-soft">Name, password, your data, delete account</span></span><ArrowRight size={18} className="text-ink-soft" aria-hidden="true" /></Link>
         <Link href="/me/progress" className="flex items-center gap-3 rounded-2xl border-2 border-line bg-surface px-4 py-4 font-semibold transition hover:border-brand"><BarChart3 size={20} className="text-brand" aria-hidden="true" /><span className="flex-1">Progress & history</span><ArrowRight size={18} className="text-ink-soft" aria-hidden="true" /></Link>
         <Link href="/placement" className="flex items-center gap-3 rounded-2xl border-2 border-line bg-surface px-4 py-4 font-semibold transition hover:border-brand"><Compass size={20} className="text-brand" aria-hidden="true" /><span className="flex-1">Retake the level check</span><ArrowRight size={18} className="text-ink-soft" aria-hidden="true" /></Link>
       </nav>
