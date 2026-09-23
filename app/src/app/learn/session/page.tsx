@@ -1,3 +1,4 @@
+import { v2Enabled } from "@/lib/v2";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { buildSession } from "@/lib/content";
@@ -6,6 +7,7 @@ import { SessionRunner } from "@/components/session-runner";
 import type { Level } from "@/lib/supabase/database.types";
 
 export default async function SessionPage() {
+  if (await v2Enabled()) redirect("/review/session");
   const supabase = await createClient();
   const {
     data: { user },

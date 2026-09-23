@@ -2,6 +2,7 @@
 // Regenerate with `supabase gen types typescript` once the project is linked, if the schema evolves.
 
 import type { PersonalFunctions, PersonalTables } from "../personal-database";
+import type { LearningFunctions, LearningTables } from "../learning/tables";
 
 export type Level = "a1" | "a2" | "b1";
 export type ItemType = "vocab" | "phrase";
@@ -10,7 +11,7 @@ export type SessionMode = "mixed" | "speaking" | "listening" | "vocab";
 
 export interface Database {
   public: {
-    Tables: PersonalTables & {
+    Tables: PersonalTables & LearningTables & {
       profiles: {
         Row: {
           id: string;
@@ -122,7 +123,7 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: PersonalFunctions;
+    Functions: PersonalFunctions & LearningFunctions;
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

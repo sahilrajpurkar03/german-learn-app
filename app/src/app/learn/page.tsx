@@ -1,3 +1,4 @@
+import { v2Enabled } from "@/lib/v2";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardStats } from "@/lib/content";
@@ -6,6 +7,7 @@ import { saveStudioAssessment } from "@/lib/studio-actions";
 import { LearningStudio } from "@/components/studio/learning-studio";
 
 export default async function LearnPage() {
+  if (await v2Enabled()) redirect("/today");
   const supabase = await createClient();
   const {
     data: { user },

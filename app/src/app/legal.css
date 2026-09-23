@@ -37,3 +37,13 @@
 .legal-page ul { list-style: disc; padding-left: 24px; }
 .legal-page a { text-decoration: underline; text-underline-offset: 3px; }
 .legal-draft { border-left: 4px solid #b77913; padding: 12px 16px; background: #fff4cc; }
+/* v2 screens: theme the shared notice/footer and keep the footer clear of fixed bars. */
+body:has(.v2) .site-footer { background: var(--v2-canvas); color: var(--v2-ink-soft); border-top-color: var(--v2-line); }
+body:has(.v2) .site-footer a, body:has(.v2) .site-footer button { color: var(--v2-ink-soft); }
+body:has(.v2) { background: var(--v2-canvas); }
+body:has(.v2:not(.v2-focus)) .site-footer { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+body:has(.v2-focus) .site-footer { padding-bottom: calc(9rem + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  body:has(.v2:not(.v2-focus)) .site-footer { padding-left: calc(15rem + 24px); padding-bottom: 16px; }
+  body:has(.v2:not(.v2-focus)) .site-notice { margin-left: 15rem; }
+}

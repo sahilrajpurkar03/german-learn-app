@@ -1,3 +1,4 @@
+import { v2Enabled } from "@/lib/v2";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { saveStudioAssessment } from "@/lib/studio-actions";
@@ -5,6 +6,7 @@ import { LearningStudio } from "@/components/studio/learning-studio";
 import { logout } from "@/lib/auth-actions";
 
 export default async function PlacementPage() {
+  if (await v2Enabled()) redirect("/placement");
   const supabase = await createClient();
   const {
     data: { user },

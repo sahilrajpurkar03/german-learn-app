@@ -25,6 +25,8 @@ export async function GET(request: Request) {
       const result = await client.from("personal_chapter_jobs").delete().in("id", ids).lt("expires_at", new Date().toISOString());
       if (result.error) throw result.error;
     }
-    return privateJson({ removed: ids.length });
+    // v2 learning event log keeps 90 days. Missing function (migration 0006 not applied) is not a cleanup failure.
+    const pruned = await client.rpc("prune_learning_events");
+    return privateJson({ removed: ids.length, prunedEvents: pruned.error ? null : pruned.data });
   } catch { return privateJson({ error: "Cleanup failed. Retry and check storage availability." }, 503); }
 }

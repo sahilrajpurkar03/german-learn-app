@@ -12,6 +12,104 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ---------------------------------------------------------------------------
+   Sprechen v2 design tokens. Colours come from the logo (navy → gold).
+   Utilities: bg-canvas, bg-surface, text-ink, text-ink-soft, border-line,
+   bg-brand, text-gold, bg-success-soft, text-der/die/das, font-display ...
+   --------------------------------------------------------------------------- */
+@theme inline {
+  --color-canvas: var(--v2-canvas);
+  --color-surface: var(--v2-surface);
+  --color-surface-2: var(--v2-surface-2);
+  --color-ink: var(--v2-ink);
+  --color-ink-soft: var(--v2-ink-soft);
+  --color-line: var(--v2-line);
+  --color-brand: var(--v2-brand);
+  --color-brand-strong: var(--v2-brand-strong);
+  --color-brand-soft: var(--v2-brand-soft);
+  --color-on-brand: var(--v2-on-brand);
+  --color-gold: var(--v2-gold);
+  --color-gold-soft: var(--v2-gold-soft);
+  --color-success: var(--v2-success);
+  --color-success-soft: var(--v2-success-soft);
+  --color-danger: var(--v2-danger);
+  --color-danger-soft: var(--v2-danger-soft);
+  --color-warning: var(--v2-warning);
+  --color-der: var(--v2-der);
+  --color-die: var(--v2-die);
+  --color-das: var(--v2-das);
+  --font-display: var(--font-studio-display), Georgia, serif;
+  --font-body: var(--font-studio-sans), system-ui, sans-serif;
+  --radius-card: 1.25rem;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgb(15 30 55 / 0.06), 0 8px 24px rgb(15 30 55 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(15 30 55 / 0.08), 0 16px 40px rgb(15 30 55 / 0.12);
+  --shadow-press: 0 4px 0 var(--v2-brand-strong);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --text-display: clamp(1.75rem, 1.2rem + 2.4vw, 2.5rem);
+}
+
+:root {
+  --v2-canvas: #f6f3ec;
+  --v2-surface: #ffffff;
+  --v2-surface-2: #efe9dd;
+  --v2-ink: #152238;
+  --v2-ink-soft: #4d5a72;
+  --v2-line: #e1d9c9;
+  --v2-brand: #1f4e8c;
+  --v2-brand-strong: #143766;
+  --v2-brand-soft: #e2ebf7;
+  --v2-on-brand: #ffffff;
+  --v2-gold: #a8741f;
+  --v2-gold-soft: #f6ead0;
+  --v2-success: #1b7f53;
+  --v2-success-soft: #dcf1e5;
+  --v2-danger: #b93d28;
+  --v2-danger-soft: #fae1db;
+  --v2-warning: #9a6512;
+  --v2-der: #2463ae;
+  --v2-die: #bf3f2b;
+  --v2-das: #1b7f53;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --v2-canvas: #0b1321; --v2-surface: #121d30; --v2-surface-2: #1a2740; --v2-ink: #edf1f8; --v2-ink-soft: #a9b5c9;
+    --v2-line: #26365294; --v2-brand: #79a8ea; --v2-brand-strong: #4d7fc4; --v2-brand-soft: #1a2c48; --v2-on-brand: #0b1321;
+    --v2-gold: #e6be6c; --v2-gold-soft: #3a2f17; --v2-success: #5fcf98; --v2-success-soft: #13301f; --v2-danger: #f28a73; --v2-danger-soft: #3b1d17;
+    --v2-warning: #f0bf63; --v2-der: #86b4f0; --v2-die: #f28a73; --v2-das: #5fcf98;
+  }
+}
+:root[data-theme="dark"] {
+  --v2-canvas: #0b1321; --v2-surface: #121d30; --v2-surface-2: #1a2740; --v2-ink: #edf1f8; --v2-ink-soft: #a9b5c9;
+  --v2-line: #26365294; --v2-brand: #79a8ea; --v2-brand-strong: #4d7fc4; --v2-brand-soft: #1a2c48; --v2-on-brand: #0b1321;
+  --v2-gold: #e6be6c; --v2-gold-soft: #3a2f17; --v2-success: #5fcf98; --v2-success-soft: #13301f; --v2-danger: #f28a73; --v2-danger-soft: #3b1d17;
+  --v2-warning: #f0bf63; --v2-der: #86b4f0; --v2-die: #f28a73; --v2-das: #5fcf98;
+}
+
+.v2 {
+  background: var(--v2-canvas);
+  color: var(--v2-ink);
+  font-family: var(--font-body);
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+}
+:root[data-theme="dark"] .v2 { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .v2 { color-scheme: dark; } }
+.v2 :focus-visible { outline: 3px solid var(--v2-brand); outline-offset: 2px; border-radius: 0.5rem; }
+.v2 ::selection { background: var(--v2-gold-soft); }
+.v2 .tabular { font-variant-numeric: tabular-nums; }
+.v2-safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+.v2-pb-tabbar { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) { .v2-pb-tabbar { padding-bottom: 2rem; } }
+
+@keyframes v2-flame { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.08) rotate(3deg); } }
+.v2-flame { animation: v2-flame 1.8s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes v2-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+.v2-skeleton { background: linear-gradient(90deg, var(--v2-surface-2) 25%, var(--v2-surface) 50%, var(--v2-surface-2) 75%); background-size: 200% 100%; animation: v2-shimmer 1.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .v2-flame, .v2-skeleton { animation: none; }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -98,63 +196,3 @@ body {
   overflow-wrap: anywhere;
 }
 .account-progress :focus-visible { outline: 3px solid #57957b; outline-offset: 3px; }
-
-@keyframes blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  96% { transform: scaleY(0.1); }
-}
-
-@keyframes mascot-talk {
-  0%, 100% { transform: scaleY(0.4) scaleX(1); }
-  50% { transform: scaleY(1) scaleX(0.85); }
-}
-
-@keyframes mascot-idle-bob {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-4px) rotate(-1deg); }
-}
-
-@keyframes mascot-happy {
-  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-  25% { transform: translateY(-14px) rotate(-8deg) scale(1.08); }
-  50% { transform: translateY(0) rotate(6deg) scale(1.05); }
-  75% { transform: translateY(-8px) rotate(-4deg) scale(1.06); }
-}
-
-@keyframes mascot-sad {
-  0%, 100% { transform: translateX(0) rotate(0deg); }
-  20% { transform: translateX(-6px) rotate(-4deg); }
-  40% { transform: translateX(6px) rotate(4deg); }
-  60% { transform: translateX(-4px) rotate(-2deg); }
-  80% { transform: translateX(4px) rotate(2deg); }
-}
-
-@keyframes pop-in {
-  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes float-up-fade {
-  0% { opacity: 0; transform: translateY(6px) scale(0.8); }
-  15% { opacity: 1; transform: translateY(0) scale(1.05); }
-  75% { opacity: 1; transform: translateY(-18px) scale(1); }
-  100% { opacity: 0; transform: translateY(-30px) scale(0.9); }
-}
-
-@keyframes shake-x {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-8px); }
-  40% { transform: translateX(8px); }
-  60% { transform: translateX(-5px); }
-  80% { transform: translateX(5px); }
-}
-
-.animate-blink { animation: blink 4.5s infinite; transform-origin: center; }
-.animate-mascot-talk { animation: mascot-talk 0.32s ease-in-out infinite; transform-origin: center; }
-.animate-mascot-idle-bob { animation: mascot-idle-bob 2.6s ease-in-out infinite; }
-.animate-mascot-happy { animation: mascot-happy 0.7s ease-in-out; }
-.animate-mascot-sad { animation: mascot-sad 0.5s ease-in-out; }
-.animate-pop-in { animation: pop-in 0.25s ease-out; }
-.animate-float-up-fade { animation: float-up-fade 1.1s ease-out forwards; }
-.animate-shake-x { animation: shake-x 0.4s ease-in-out; }
-

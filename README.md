@@ -7,6 +7,10 @@
 - Spaced-repetition reviews to help you remember what you learn.
 - Starting-level assessment and weekly check-ins.
 
+## New version (preview)
+
+A redesigned Sprechen is being rolled out. It has a structured A1 course (10 units: greetings, numbers, café, shopping, home, travel, health, offices, work, free time), a natural German voice, one clear next step each day, a streak with freezes, and progress saved to your account. Try the first lesson without an account at [/demo](https://app-dusky-nine-52.vercel.app/demo). Invited testers can open [/today?v2=1](https://app-dusky-nine-52.vercel.app/today?v2=1) after signing in, and `?v2=0` switches back. The steps below describe the current version. See [Sprechen v2](docs/SPRECHEN-V2.md) for details and status.
+
 ## How to use the app
 
 ### Get started

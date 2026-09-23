@@ -19,7 +19,7 @@ export function providerFailure(error: unknown): never {
   throw new ChapterHttpError(422, "A complete, validated result could not be created. Keep your text and try a shorter, clearer passage. No new chapter was saved.");
 }
 
-export async function readChapterRequest(request: Request): Promise<unknown> {
+export async function readChapterRequest(request: Request, limit = 18000): Promise<unknown> {
   const origin = request.headers.get("origin");
   const requestUrl = new URL(request.url);
   const expectedOrigin = `${requestUrl.protocol}//${request.headers.get("host") ?? requestUrl.host}`;
@@ -35,9 +35,9 @@ export async function readChapterRequest(request: Request): Promise<unknown> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > 18000) {
+    if (size > limit) {
       await reader.cancel();
-      throw new ChapterHttpError(413, "Select a shorter transcript.");
+      throw new ChapterHttpError(413, limit === 18000 ? "Select a shorter transcript." : "The request is too large.");
     }
     chunks.push(value);
   }

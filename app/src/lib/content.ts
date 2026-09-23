@@ -138,97 +138,10 @@ export async function buildSession(userId: string, level: Level): Promise<Sessio
   return shuffle([...vocabItems, ...phraseItems]).slice(0, SESSION_SIZE);
 }
 
-export interface PlacementQuestion {
-  id: string;
-  itemType: "vocab";
-  level: Level;
-  lemma: string;
-  translationEn: string;
-  options: string[];
-}
-
-const PLACEMENT_PER_LEVEL = 6;
 const CHECKIN_INTERVAL_DAYS = 7;
-
-function toPlacementQuestion(
-  item: { id: string; lemma: string; translation_en: string },
-  level: Level,
-  distractorPool: string[],
-): PlacementQuestion {
-  const distractors = shuffle(distractorPool.filter((t) => t !== item.translation_en)).slice(0, 3);
-  return {
-    id: item.id,
-    itemType: "vocab",
-    level,
-    lemma: item.lemma,
-    translationEn: item.translation_en,
-    options: shuffle([item.translation_en, ...distractors]),
-  };
-}
-
-// a short mixed-level quiz used once, right after signup, to pick a starting level
-export async function getPlacementQuestions(): Promise<PlacementQuestion[]> {
-  const supabase = await createClient();
-
-  const rows = await Promise.all(
-    LEVELS.map((level) =>
-      supabase.from("vocab_items").select("id, lemma, translation_en").eq("level", level).limit(30),
-    ),
-  );
-
-  const pool = rows.flatMap((r) => r.data ?? []).map((v) => v.translation_en as string);
-
-  const questions: PlacementQuestion[] = [];
-  LEVELS.forEach((level, i) => {
-    const picked = shuffle(rows[i].data ?? []).slice(0, PLACEMENT_PER_LEVEL);
-    for (const item of picked) {
-      questions.push(toPlacementQuestion(item, level, pool));
-    }
-  });
-
-  return shuffle(questions);
-}
 
 export function nextCheckinDate(from = new Date()): string {
   return new Date(from.getTime() + CHECKIN_INTERVAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-}
-
-// a periodic (~7 day) re-test: re-quizzes previously-missed items (so they can be
-// retired once mastered, or kept in rotation if still shaky) plus a taste of the next
-// level up, to decide whether the learner should be advanced
-export async function getCheckinQuestions(userId: string, currentLevel: Level): Promise<PlacementQuestion[]> {
-  const supabase = await createClient();
-
-  const { data: weakRows } = await supabase
-    .from("item_progress")
-    .select("item_id")
-    .eq("user_id", userId)
-    .eq("item_type", "vocab")
-    .gt("wrong_count", 0)
-    .order("wrong_count", { ascending: false })
-    .limit(4);
-  const weakIds = (weakRows ?? []).map((r) => r.item_id as string);
-
-  const idx = LEVELS.indexOf(currentLevel);
-  const nextLevel = LEVELS[Math.min(idx + 1, LEVELS.length - 1)];
-
-  const [weakVocabRows, nextLevelRows, poolRows] = await Promise.all([
-    weakIds.length
-      ? supabase.from("vocab_items").select("id, lemma, translation_en, level").in("id", weakIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; lemma: string; translation_en: string; level: Level }> }),
-    supabase.from("vocab_items").select("id, lemma, translation_en, level").eq("level", nextLevel).limit(30),
-    supabase.from("vocab_items").select("translation_en").in("level", unlockedLevels(nextLevel)).limit(100),
-  ]);
-
-  const pool = (poolRows.data ?? []).map((v) => v.translation_en as string);
-  const nextLevelPicked = shuffle(nextLevelRows.data ?? []).slice(0, PLACEMENT_PER_LEVEL);
-
-  const questions = [
-    ...(weakVocabRows.data ?? []).map((item) => toPlacementQuestion(item, item.level, pool)),
-    ...nextLevelPicked.map((item) => toPlacementQuestion(item, nextLevel, pool)),
-  ];
-
-  return shuffle(questions);
 }
 
 export interface DashboardStats {

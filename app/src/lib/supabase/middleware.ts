@@ -1,8 +1,26 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { readV2Override, V2_COOKIE, V2_COOKIE_MAX_AGE } from "@/lib/feature-flags";
 
 export async function updateSession(request: NextRequest) {
-  if (["/preview", "/imprint", "/privacy", "/data-sharing", "/security", "/api/personal-chapters", "/api/personal-chapters/cleanup"].includes(request.nextUrl.pathname)) {
+  const response = await sessionResponse(request);
+  const override = readV2Override(request.nextUrl.searchParams);
+  if (override) {
+    response.cookies.set(V2_COOKIE, override === "on" ? "1" : "0", {
+      path: "/",
+      maxAge: V2_COOKIE_MAX_AGE,
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+      httpOnly: true,
+    });
+  }
+  return response;
+}
+
+async function sessionResponse(request: NextRequest) {
+  // Public pages, and API routes (they authenticate themselves and answer 401 instead of redirecting).
+  const path = request.nextUrl.pathname;
+  if (["/preview", "/demo", "/imprint", "/privacy", "/data-sharing", "/security"].includes(path) || path.startsWith("/api/")) {
     return NextResponse.next({ request });
   }
   let supabaseResponse = NextResponse.next({ request });

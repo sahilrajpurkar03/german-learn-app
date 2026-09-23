@@ -1,9 +1,11 @@
+import { v2Enabled } from "@/lib/v2";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProgressDetails } from "@/lib/content";
 
 export default async function ProgressPage() {
+  if (await v2Enabled()) redirect("/me/progress");
   const supabase = await createClient();
   const {
     data: { user },

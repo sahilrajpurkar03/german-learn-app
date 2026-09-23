@@ -19,8 +19,9 @@ const studioDisplay = Fraunces({ variable: "--font-studio-display", subsets: ["l
 
 export const metadata: Metadata = {
   title: "Sprechen - Learn German",
-  description: "Interactive daily German practice focused on speaking, listening and vocabulary retention.",
+  description: "Everyday German for life in Germany: short daily lessons, reviews that stick, and real conversations.",
   manifest: "/manifest.json",
+  icons: { icon: "/favicon.ico", apple: "/apple-touch-icon.png" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -29,7 +30,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#111827",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f3ec" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1321" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
