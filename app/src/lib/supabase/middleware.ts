@@ -23,6 +23,18 @@ async function sessionResponse(request: NextRequest) {
   if (["/preview", "/demo", "/imprint", "/privacy", "/data-sharing", "/security"].includes(path) || path.startsWith("/api/")) {
     return NextResponse.next({ request });
   }
+  // A deployment without Supabase settings (e.g. a Vercel preview whose env vars are Production-only)
+  // can't check sign-in. Say so plainly instead of failing with a bare 500.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return new NextResponse(
+      `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sprechen · setup needed</title></head>
+<body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1.25rem;line-height:1.6;color:#152238">
+<h1 style="font-size:1.5rem">This deployment isn't connected to its database</h1>
+<p>Sign-in needs <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, which are not set for this environment. In Vercel, add them to this environment (for previews: Settings → Environment Variables → Preview) and redeploy.</p>
+<p><a href="/demo">Try the demo lesson</a> — it works without an account.</p></body></html>`,
+      { status: 503, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
+    );
+  }
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
