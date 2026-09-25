@@ -50,7 +50,7 @@ function Exercise(props: ExerciseProps) {
     case "pattern": return <PatternCard {...props} />;
     case "match": return <MatchExercise {...props} />;
     case "build": return <BuildExercise {...props} />;
-    case "type": case "dictation": case "respond": case "speak": return <TextExercise {...props} />;
+    case "type": case "dictation": case "respond": case "speak": case "repeat": return <TextExercise {...props} />;
     case "fill_gap": return props.step.options ? <ChoiceExercise {...props} /> : <TextExercise {...props} />;
     default: return <ChoiceExercise {...props} />;
   }

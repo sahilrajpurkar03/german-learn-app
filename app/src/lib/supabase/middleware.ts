@@ -67,6 +67,7 @@ async function sessionResponse(request: NextRequest) {
   const isRecoveryRoute = [
     "/auth/forgot-password",
     "/auth/callback",
+    "/auth/confirm",
     "/auth/reset-password",
   ].includes(request.nextUrl.pathname);
 

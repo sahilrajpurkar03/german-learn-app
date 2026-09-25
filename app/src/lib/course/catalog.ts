@@ -29,17 +29,18 @@ function assemble() {
   const lessons = new Map<string, Lesson>();
   const outlines: UnitOutline[] = [];
   const known: Item[] = [];
+  const bank = units.flatMap((unit) => unit.items);
   for (const unit of units) {
     const core = unit.lessons.map((spec) => {
-      const lesson = buildCoreLesson(unit, spec, (id) => items.get(id), patterns, [...known]);
+      const lesson = buildCoreLesson(unit, spec, (id) => items.get(id), patterns, [...known], bank);
       for (const id of spec.newItems) known.push(items.get(id)!);
       return lesson;
     });
     const conversations = unit.conversations.map((id) => missions.get(id)).filter((mission): mission is Mission => Boolean(mission)).map((mission) => {
       missionUnit.set(mission.id, unit.id);
-      return conversationLesson(mission, unit.id);
+      return conversationLesson(mission, unit.id, bank);
     });
-    const checkpoint = buildCheckpoint(unit, patterns);
+    const checkpoint = buildCheckpoint(unit, patterns, bank);
     const all = [...core, ...conversations, checkpoint];
     for (const lesson of all) lessons.set(lesson.id, lesson);
     outlines.push({ unit, lessons: all, core, conversations, checkpoint });
@@ -49,13 +50,13 @@ function assemble() {
     if (missionUnit.has(mission.id)) continue;
     const unitId = units.at(-1)!.id;
     missionUnit.set(mission.id, unitId);
-    lessons.set(conversationLessonId(mission.id), conversationLesson(mission, unitId));
+    lessons.set(conversationLessonId(mission.id), conversationLesson(mission, unitId, bank));
   }
   for (const mission of MISSIONS) mission.turns.forEach((_, index) => {
     const item = turnItem(mission, index);
     if (item) { items.set(item.id, item); itemUnit.set(item.id, `conv:${mission.id}`); }
   });
-  return { units, patterns, items, itemUnit, missions, missionUnit, lessons, outlines };
+  return { units, patterns, items, itemUnit, missions, missionUnit, lessons, outlines, bank };
 }
 
 let cached: ReturnType<typeof assemble> | null = null;
@@ -97,7 +98,8 @@ export function itemPool(key: string): Item[] {
     const neighbours = [...missions.values()].filter((other) => other.id !== mission?.id && (other.topic ?? "") === (mission?.topic ?? "")).slice(0, 3);
     return [...own, ...neighbours.flatMap((other) => other.turns.map((_, index) => turnItem(other, index)).filter((item): item is Item => Boolean(item)))];
   }
-  return outlines.find((outline) => outline.unit.id === home)?.unit.items ?? [...items.values()].slice(0, 10);
+  // Course words and phrases: wrong options come from the whole course, not just one unit.
+  return outlines.some((outline) => outline.unit.id === home) ? catalog().bank : [...items.values()].slice(0, 10);
 }
 
 export function reviewSubject(key: string, custom?: (key: string) => { item: Item; pool: Item[] } | null): ReviewSubject | null {

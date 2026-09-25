@@ -1,4 +1,4 @@
-import { articleStep, buildStep, chooseMeaning, dictationStep, drillStep, gapStep, listenTap, speakStep, tokens, typeStep, bareWord } from "./build-lesson.ts";
+import { articleStep, buildStep, chooseMeaning, dictationStep, drillStep, gapStep, listenTap, speakStep, typeStep } from "./build-lesson.ts";
 import type { MemoryState } from "./memory.ts";
 import type { ExerciseType, Item, Pattern, Step } from "./types.ts";
 
@@ -51,10 +51,10 @@ export function buildReviewStep(subject: ReviewSubject, type: ExerciseType, vari
     case "type": return typeStep(id, item);
     case "dictation": return dictationStep(id, item);
     case "speak": return speakStep(id, item);
-    case "build": return buildStep(id, { de: item.de, en: item.en, alt: item.alt }, [item.id], pool.flatMap((other) => tokens(bareWord(other))));
+    case "build": return buildStep(id, { de: item.de, en: item.en, alt: item.alt }, [item.id], pool);
     case "fill_gap": {
       if (!item.example) return null;
-      return gapStep(id, { de: item.example.de, en: item.example.en }, [item.id], tokens(bareWord(item)), pool.flatMap((other) => tokens(bareWord(other))));
+      return gapStep(id, { de: item.example.de, en: item.example.en }, [item.id], [item], pool);
     }
     default: return null;
   }

@@ -1,3 +1,4 @@
+import { SKIP_SPEAKING, SPOKEN_TYPES } from "./types.ts";
 import type { Step, Verdict } from "./types.ts";
 
 export type DiffToken = { token: string; ok: boolean };
@@ -98,6 +99,7 @@ const CHOICE_TYPES = new Set(["choose", "listen_tap", "listen_choose", "article"
 export function checkAnswer(step: Step, answer: string): CheckResult {
   const expected = step.accepted[0] ?? "";
   if (step.type === "intro" || step.type === "pattern") return { verdict: "seen", expected };
+  if (SPOKEN_TYPES.has(step.type) && answer === SKIP_SPEAKING) return { verdict: "seen", expected };
 
   if (CHOICE_TYPES.has(step.type) || (step.type === "fill_gap" && step.options)) {
     const correct = step.accepted.some((option) => normalize(option) === normalize(answer));
@@ -124,7 +126,7 @@ export function checkAnswer(step: Step, answer: string): CheckResult {
   }
 
   const critical = new Set([...CRITICAL, ...(step.critical ?? []).map(normalize)]);
-  const lenient = step.type === "speak";
+  const lenient = SPOKEN_TYPES.has(step.type);
   let best: TextVerdict & { expected: string } = { verdict: "wrong", expected };
   for (const option of step.accepted) {
     const result = compareText(option, answer, critical, lenient);

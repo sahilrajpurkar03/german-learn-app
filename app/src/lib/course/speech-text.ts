@@ -12,7 +12,7 @@ export function audioFile(text: string): string {
 /** Every German string in a step that can be played aloud. */
 export function stepSpeech(step: { audio?: string; card?: { example?: { de: string } }; patternCard?: { examples: { de: string }[] }; accepted: string[]; type: string; options?: string[] }): string[] {
   const texts = [step.audio, step.card?.example?.de, ...(step.patternCard?.examples.map((example) => example.de) ?? [])];
-  if (["type", "respond", "speak", "build", "dictation"].includes(step.type)) texts.push(step.accepted[0]);
+  if (["type", "respond", "speak", "repeat", "build", "dictation"].includes(step.type)) texts.push(step.accepted[0]);
   if (step.type === "listen_tap") texts.push(...(step.options ?? []));
   return texts.filter((text): text is string => Boolean(text && speechText(text)));
 }

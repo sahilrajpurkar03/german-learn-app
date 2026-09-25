@@ -1,4 +1,5 @@
 import { pick, scramble, seededShuffle } from "./random.ts";
+import { gapDistractors, meaningAlikes, soundAlikes, tileDistractors } from "./distractors.ts";
 import type { Item, Lesson, LessonSpec, Pattern, PatternDrill, PracticeSentence, Step, Unit } from "./types.ts";
 
 const ARTICLES: Record<string, string> = { m: "der", f: "die", n: "das" };
@@ -15,23 +16,19 @@ function card(item: Item): Step["card"] {
   return { de: item.de, en: item.en, gender: item.gender, plural: item.plural, emoji: item.emoji, example: item.example, note: item.note };
 }
 
-function distinct(values: string[]): string[] {
-  return [...new Set(values)];
-}
-
 export function introStep(id: string, item: Item): Step {
   return { id, type: "intro", itemKeys: [item.id], prompt: item.kind === "phrase" ? "New phrase" : "New word", text: item.de, audio: item.de, translation: item.en, card: card(item), accepted: [] };
 }
 
-export function chooseMeaning(id: string, item: Item, pool: Item[]): Step {
-  const wrong = pick(distinct(pool.filter((other) => other.id !== item.id && other.en !== item.en).map((other) => other.en)), 2, id);
+/** `bank` = items to draw wrong options from; `exclude` = answers of the other questions nearby (never used as options). */
+export function chooseMeaning(id: string, item: Item, bank: Item[], exclude: Set<string> = new Set()): Step {
+  const wrong = meaningAlikes(item, bank, exclude, id);
   return { id, type: "choose", itemKeys: [item.id], prompt: "What does this mean?", text: item.de, audio: item.de, options: seededShuffle([item.en, ...wrong], `${id}:o`), accepted: [item.en] };
 }
 
-export function listenTap(id: string, item: Item, pool: Item[]): Step {
-  const wrong = pick(distinct(pool.filter((other) => other.id !== item.id && other.de !== item.de && other.kind === item.kind).map((other) => other.de)), 2, id);
-  const fallback = wrong.length < 2 ? pick(distinct(pool.filter((other) => other.id !== item.id && other.de !== item.de).map((other) => other.de)), 2 - wrong.length, `${id}:f`) : [];
-  return { id, type: "listen_tap", itemKeys: [item.id], prompt: "Tap what you hear", audio: item.de, translation: item.en, options: seededShuffle([item.de, ...wrong, ...fallback], `${id}:o`), accepted: [item.de] };
+export function listenTap(id: string, item: Item, bank: Item[], exclude: Set<string> = new Set()): Step {
+  const wrong = soundAlikes(item, bank, exclude, id);
+  return { id, type: "listen_tap", itemKeys: [item.id], prompt: "Tap what you hear", audio: item.de, translation: item.en, options: seededShuffle([item.de, ...wrong], `${id}:o`), accepted: [item.de] };
 }
 
 export function articleStep(id: string, item: Item): Step | null {
@@ -58,24 +55,28 @@ export function dictationStep(id: string, item: Pick<Item, "de" | "en" | "alt"> 
 }
 
 export function speakStep(id: string, item: Pick<Item, "de" | "en" | "alt"> & { id: string }): Step {
-  return { id, type: "speak", itemKeys: [item.id], prompt: "Say this in German", text: item.en, audio: item.de, accepted: [item.de, ...(item.alt ?? [])], note: "Speech recognition checks the words, not your pronunciation." };
+  return { id, type: "speak", itemKeys: [item.id], prompt: "Say this in German", text: item.en, audio: item.de, translation: item.en, accepted: [item.de, ...(item.alt ?? [])], note: "Speech recognition checks the words, not your pronunciation." };
 }
 
-export function buildStep(id: string, sentence: PracticeSentence, itemKeys: string[], distractorPool: string[]): Step {
+/** Listen, then say it aloud: pronunciation practice with the German on screen. */
+export function repeatStep(id: string, item: Pick<Item, "de" | "en" | "alt"> & { id: string }, itemKeys = [item.id]): Step {
+  return { id, type: "repeat", itemKeys, prompt: "Listen, then say it", text: item.de, audio: item.de, translation: item.en, accepted: [item.de, ...(item.alt ?? [])], note: "Speech recognition checks the words, not your accent." };
+}
+
+export function buildStep(id: string, sentence: PracticeSentence, itemKeys: string[], bank: Item[]): Step {
   const words = tokens(sentence.de);
-  const lower = new Set(words.map((word) => word.toLocaleLowerCase("de")));
-  const extras = pick(distinct(distractorPool.filter((word) => !lower.has(word.toLocaleLowerCase("de")) && word.length > 1)), 2, `${id}:d`);
+  const extras = tileDistractors(words, bank, `${id}:d`);
   return { id, type: "build", itemKeys, prompt: "Build the sentence", text: sentence.en, audio: sentence.de, tiles: scramble([...words, ...extras], id), accepted: [sentence.de, ...(sentence.alt ?? [])] };
 }
 
-export function gapStep(id: string, sentence: PracticeSentence, itemKeys: string[], candidates: string[], distractorPool: string[]): Step | null {
+export function gapStep(id: string, sentence: PracticeSentence, itemKeys: string[], candidates: Item[], bank: Item[], exclude: Set<string> = new Set()): Step | null {
   const words = tokens(sentence.de);
-  const lowerCandidates = candidates.map((word) => word.toLocaleLowerCase("de"));
-  const gap = sentence.gap ?? words.find((word) => lowerCandidates.includes(word.toLocaleLowerCase("de"))) ?? [...words].sort((left, right) => right.length - left.length)[0];
+  const byWord = new Map(candidates.map((item) => [bareWord(item).toLocaleLowerCase("de"), item]));
+  const gap = sentence.gap ?? words.find((word) => byWord.has(word.toLocaleLowerCase("de"))) ?? [...words].sort((left, right) => right.length - left.length)[0];
   if (!gap) return null;
   const position = sentence.de.indexOf(gap);
   if (position < 0) return null;
-  const wrong = sentence.distractors ?? pick(distinct(distractorPool.filter((word) => word.toLocaleLowerCase("de") !== gap.toLocaleLowerCase("de") && word.length > 1)), 2, `${id}:d`);
+  const wrong = sentence.distractors ?? gapDistractors(gap, byWord.get(gap.toLocaleLowerCase("de")), bank, exclude, `${id}:d`);
   return {
     id, type: "fill_gap", itemKeys, prompt: "Fill the gap", text: sentence.en, audio: sentence.de, translation: sentence.en,
     gap: { before: sentence.de.slice(0, position), after: sentence.de.slice(position + gap.length) },
@@ -103,30 +104,36 @@ function sentenceItems(sentence: PracticeSentence, items: Item[]): string[] {
   return matched.map((item) => item.id);
 }
 
-/** `known` = every item introduced before this lesson, across all earlier units and lessons. */
-export function buildCoreLesson(unit: Unit, spec: LessonSpec, lookup: (id: string) => Item | undefined, patterns: Record<string, Pattern>, known: Item[] = []): Lesson {
+/**
+ * `known` = every item introduced before this lesson, across all earlier units and lessons.
+ * `bank` = every course item; wrong options come from here, never from this lesson's own new items.
+ */
+export function buildCoreLesson(unit: Unit, spec: LessonSpec, lookup: (id: string) => Item | undefined, patterns: Record<string, Pattern>, known: Item[] = [], bank: Item[] = unit.items): Lesson {
   const key = (slug: string) => `${spec.id}~${slug}`;
   const items = spec.newItems.map((id) => {
     const item = lookup(id);
     if (!item) throw new Error(`Lesson ${spec.id} references unknown item ${id}`);
     return item;
   });
-  const seenInUnit = [...known.filter((item) => unit.items.includes(item)), ...items];
-  const pool = seenInUnit.length >= 6 ? seenInUnit : [...seenInUnit, ...unit.items.filter((item) => !seenInUnit.includes(item))].slice(0, 8);
   const linkable = [...known, ...items];
-  const unitWords = distinct(unit.items.flatMap((item) => tokens(bareWord(item))));
+  const lessonIds = new Set(items.map((item) => item.id));
   const steps: Step[] = [];
 
   items.forEach((item, index) => {
     steps.push(introStep(key(`intro:${item.id}`), item));
     if (index % 2 === 1) {
       const previous = items[index - 1];
-      steps.push(listenTap(key(`hear:${previous.id}`), previous, pool));
-      steps.push(chooseMeaning(key(`meaning:${item.id}`), item, pool));
+      steps.push(listenTap(key(`hear:${previous.id}`), previous, bank, lessonIds));
+      steps.push(chooseMeaning(key(`meaning:${item.id}`), item, bank, lessonIds));
     }
   });
-  if (items.length % 2 === 1) steps.push(chooseMeaning(key(`meaning:${items.at(-1)!.id}`), items.at(-1)!, pool));
+  if (items.length % 2 === 1) steps.push(chooseMeaning(key(`meaning:${items.at(-1)!.id}`), items.at(-1)!, bank, lessonIds));
   if (items.length >= 3) steps.push(matchStep(key("match"), items));
+  // Say it aloud: a new phrase, or a new word's example sentence.
+  const spoken = items.find((item) => item.kind === "phrase") ?? items.find((item) => item.example) ?? items[0];
+  steps.push(spoken.kind === "word" && spoken.example
+    ? repeatStep(key(`repeat:${spoken.id}`), { id: spoken.id, de: spoken.example.de, en: spoken.example.en })
+    : repeatStep(key(`repeat:${spoken.id}`), spoken));
 
   const pattern = spec.pattern ? patterns[spec.pattern] : undefined;
   if (spec.pattern && !pattern) throw new Error(`Lesson ${spec.id} references unknown pattern ${spec.pattern}`);
@@ -143,15 +150,22 @@ export function buildCoreLesson(unit: Unit, spec: LessonSpec, lookup: (id: strin
     const linked = sentenceItems(sentence, linkable);
     const itemKeys = linked.length ? linked : items.slice(0, 1).map((item) => item.id);
     const slug = `sentence:${index}`;
-    if (index % 3 === 0) steps.push(buildStep(key(slug), sentence, itemKeys, unitWords));
+    if (index % 3 === 0) steps.push(buildStep(key(slug), sentence, itemKeys, bank));
     else if (index % 3 === 1) {
-      const gap = gapStep(key(slug), sentence, itemKeys, items.map(bareWord), unitWords);
+      const gap = gapStep(key(slug), sentence, itemKeys, items, bank, lessonIds);
       if (gap) steps.push(gap);
     } else steps.push({ ...typeStep(key(slug), { id: itemKeys[0], de: sentence.de, en: sentence.en, alt: sentence.alt }), itemKeys });
   });
 
   const recall = items.find((item) => item.kind === "word" && item !== noun) ?? items[0];
   steps.push(typeStep(key(`recall:${recall.id}`), recall));
+  // Produce a whole sentence out loud before the dialogue.
+  const said = spec.sentences[0];
+  if (said) {
+    const linked = sentenceItems(said, linkable);
+    const keys = linked.length ? linked : [items[0].id];
+    steps.push({ ...speakStep(key("say:0"), { id: keys[0], de: said.de, en: said.en, alt: said.alt }), itemKeys: keys });
+  }
 
   spec.dialogue.forEach((turn, index) => {
     const linked = sentenceItems({ de: turn.accepted[0], en: turn.task }, linkable);
@@ -164,24 +178,24 @@ export function buildCoreLesson(unit: Unit, spec: LessonSpec, lookup: (id: strin
   return { id: spec.id, unitId: unit.id, kind: "core", title: spec.title, goal: spec.goal, minutes: Math.max(4, Math.round(steps.length * 0.45)), steps, introduces: items.map((item) => item.id) };
 }
 
-export function buildCheckpoint(unit: Unit, patterns: Record<string, Pattern>): Lesson {
+export function buildCheckpoint(unit: Unit, patterns: Record<string, Pattern>, bank: Item[] = unit.items): Lesson {
   const id = `${unit.id}-check`;
   const key = (slug: string) => `${id}~${slug}`;
   const items = unit.items;
-  const unitWords = distinct(items.flatMap((item) => tokens(bareWord(item))));
   const chosen = pick(items, Math.min(8, items.length), id);
+  const chosenIds = new Set(chosen.map((item) => item.id));
   const steps: Step[] = [];
   chosen.forEach((item, index) => {
     const slug = `${index}:${item.id}`;
-    if (index % 4 === 0) steps.push(listenTap(key(`hear:${slug}`), item, items));
-    else if (index % 4 === 1) steps.push(chooseMeaning(key(`meaning:${slug}`), item, items));
+    if (index % 4 === 0) steps.push(listenTap(key(`hear:${slug}`), item, bank, chosenIds));
+    else if (index % 4 === 1) steps.push(chooseMeaning(key(`meaning:${slug}`), item, bank, chosenIds));
     else if (index % 4 === 2) steps.push(articleStep(key(`article:${slug}`), item) ?? typeStep(key(`type:${slug}`), item));
     else steps.push(typeStep(key(`type:${slug}`), item));
   });
   const sentences = unit.lessons.flatMap((lesson) => lesson.sentences);
   pick(sentences, 2, `${id}:s`).forEach((sentence, index) => {
     const linked = sentenceItems(sentence, items);
-    steps.push(buildStep(key(`build:${index}`), sentence, linked.length ? linked : [items[0].id], unitWords));
+    steps.push(buildStep(key(`build:${index}`), sentence, linked.length ? linked : [items[0].id], bank));
   });
   const unitPatterns = unit.lessons.map((lesson) => lesson.pattern).filter((value): value is string => Boolean(value)).map((patternId) => patterns[patternId]).filter(Boolean);
   unitPatterns.slice(0, 2).forEach((pattern) => {

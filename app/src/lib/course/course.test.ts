@@ -166,3 +166,33 @@ test("every German line in the course has a generated voice clip", () => {
   }
   assert.deepEqual([...missing].slice(0, 10), [], `${missing.size} lines have no clip. Run: npm run audio:manifest, then scripts/tts-build.py`);
 });
+
+test("wrong options never come from the lesson's own answers and match the kind of word", async () => {
+  const { classify, formVariants } = await import("./distractors.ts");
+  const { SKIP_SPEAKING } = await import("./types.ts");
+  for (const outline of catalog().outlines) for (const lesson of outline.core) {
+    const own = new Set(lesson.introduces.map((id) => catalog().items.get(id)!));
+    const ownTexts = new Set([...own].flatMap((item) => [item.de, item.en]));
+    for (const step of lesson.steps.filter((entry) => entry.type === "choose" || entry.type === "listen_tap")) {
+      const wrong = step.options!.filter((option) => !step.accepted.includes(option));
+      assert.equal(wrong.length, 2, step.id);
+      for (const option of wrong) assert.ok(!ownTexts.has(option), `${step.id}: "${option}" is another answer in this lesson`);
+      const item = catalog().items.get(step.itemKeys[0])!;
+      if (step.type === "listen_tap" && item.gender) {
+        const article = item.de.split(" ")[0];
+        assert.ok(wrong.some((option) => option.startsWith(`${article} `)), `${step.id}: nouns should be compared with same-article nouns`);
+      }
+    }
+    assert.ok(lesson.steps.some((step) => step.type === "repeat"), `${lesson.id} has a listen-and-repeat step`);
+    assert.ok(lesson.steps.some((step) => step.type === "speak"), `${lesson.id} has a say-it step`);
+  }
+  assert.equal(classify({ kind: "word", de: "morgen", en: "tomorrow" }), "word");
+  assert.equal(classify({ kind: "word", de: "wohnen", en: "to live (somewhere)" }), "verb");
+  assert.deepEqual(formVariants("bin", []), ["bist", "ist", "sind", "seid"]);
+  assert.ok(formVariants("trinke", ["trink"]).includes("trinkt"));
+  const build = getLesson("a1-u03-l1")!.steps.find((step) => step.type === "build")!;
+  assert.ok(build.tiles!.some((tile) => ["bist", "sind", "Die", "Das", "Den", "Dem"].includes(tile)), "build tiles include a near-miss form");
+  const repeat = getLesson("a1-u01-l1")!.steps.find((step) => step.type === "repeat")!;
+  assert.equal(checkAnswer(repeat, SKIP_SPEAKING).verdict, "seen");
+  assert.equal(checkAnswer(repeat, "hallo").verdict, "correct");
+});

@@ -89,13 +89,17 @@ export type ExerciseType =
   | "type"
   | "dictation"
   | "speak"
+  | "repeat"
   | "respond";
 
 export const GRADED_TYPES: ReadonlySet<ExerciseType> = new Set([
-  "choose", "listen_tap", "listen_choose", "article", "match", "build", "fill_gap", "type", "dictation", "speak", "respond",
+  "choose", "listen_tap", "listen_choose", "article", "match", "build", "fill_gap", "type", "dictation", "speak", "repeat", "respond",
 ]);
 /** Recognition exercises earn at most "good" (grade 3) in the scheduler; recall earns 4. */
-export const RECOGNITION_TYPES: ReadonlySet<ExerciseType> = new Set(["choose", "listen_tap", "listen_choose", "article", "match"]);
+export const RECOGNITION_TYPES: ReadonlySet<ExerciseType> = new Set(["choose", "listen_tap", "listen_choose", "article", "match", "repeat"]);
+/** Spoken steps; the learner may skip them ("can't speak now") without penalty. */
+export const SPOKEN_TYPES: ReadonlySet<ExerciseType> = new Set(["speak", "repeat"]);
+export const SKIP_SPEAKING = "__skip_speaking__";
 
 export type Step = {
   id: string;

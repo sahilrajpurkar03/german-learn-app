@@ -110,3 +110,55 @@ test("account & privacy: signed-out access is refused and login explains outcome
   const callback = await request.get("/auth/callback?next=//evil.example&error=access_denied", { maxRedirects: 0 });
   expect(callback.headers().location).not.toContain("evil.example");
 });
+
+test("password reset links work while signed out and reject bad tokens clearly", async ({ page }) => {
+  await page.goto("/auth/confirm?token_hash=not-a-real-token&type=recovery");
+  await expect(page).toHaveURL(/\/auth\/forgot-password\?error=invalid-link/);
+  await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
+  await page.goto("/auth/confirm?token_hash=x&type=recovery&next=//evil.example");
+  await expect(page).not.toHaveURL(/evil\.example/);
+});
+
+test("placed words can be dragged or moved with the keyboard, and speaking can be skipped", async ({ page }) => {
+  await page.goto("/demo");
+  for (const step of lesson.steps) {
+    if (step.type === "build") {
+      const bank = page.getByLabel("Word bank");
+      const words = step.accepted[0].replace(/[.,!?]/g, "").split(/\s+/);
+      // Place the words in the wrong order: last word first.
+      for (const word of [...words.slice(1), words[0]]) await bank.getByRole("button", { name: word, exact: true }).first().click();
+      const sentence = page.getByRole("list", { name: "Your sentence" });
+      const first = sentence.getByRole("listitem").filter({ hasText: words[0] });
+      const target = sentence.getByRole("listitem").first();
+      const from = (await first.boundingBox())!;
+      const to = (await target.boundingBox())!;
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(to.x + 6, to.y + to.height / 2, { steps: 12 });
+      await page.mouse.up();
+      await expect(sentence.getByRole("listitem").first()).toContainText(words[0]);
+      // Keyboard: move the first word one to the right and back.
+      await sentence.getByRole("listitem").first().focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(sentence.getByRole("listitem").nth(1)).toContainText(words[0]);
+      await page.keyboard.press("ArrowLeft");
+      await expect(sentence.getByRole("listitem").first()).toContainText(words[0]);
+      await page.getByRole("button", { name: "Check", exact: true }).click();
+      await expect(page.getByText(/Richtig|Super|Genau|Sehr gut|Toll|Perfekt|Klasse|Prima/).first()).toBeVisible();
+      await page.getByRole("status").filter({ has: page.getByRole("button", { name: "Continue" }) }).getByRole("button", { name: "Continue" }).click();
+      continue;
+    }
+    if (step.type === "repeat") {
+      await expect(page.getByRole("button", { name: "Tap and speak" })).toBeVisible();
+      await page.getByRole("button", { name: /Can.t speak now/ }).click();
+      continue;
+    }
+    if (step.type === "speak") {
+      // Speaking stays off for a while after "Can't speak now".
+      await expect(page.getByText("Speaking is off for now")).toBeVisible();
+      return;
+    }
+    await answer(page, step);
+  }
+  throw new Error("lesson has no speak step");
+});
