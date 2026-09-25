@@ -162,3 +162,15 @@ test("placed words can be dragged or moved with the keyboard, and speaking can b
   }
   throw new Error("lesson has no speak step");
 });
+
+test("reset links from the default email work in any browser and leave no tokens in the address bar", async ({ page }) => {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const token = `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: "00000000-0000-4000-8000-000000000001", exp: Math.floor(Date.now() / 1000) + 3600, aud: "authenticated", role: "authenticated" })}.sig`;
+  await page.context().route("**/auth/v1/user**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "00000000-0000-4000-8000-000000000001", aud: "authenticated", email: "reset@example.invalid" }) }));
+  await page.goto(`/auth/reset-password#access_token=${token}&refresh_token=refresh&expires_in=3600&token_type=bearer&type=recovery`);
+  await expect(page.getByLabel("New password", { exact: true })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe("");
+  await page.goto("/auth/forgot-password");
+  await page.goto("/auth/reset-password#error=access_denied&error_description=Email+link+is+invalid+or+has+expired");
+  await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
+});

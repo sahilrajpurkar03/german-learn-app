@@ -193,12 +193,20 @@ test("browser headers and unauthenticated private responses are hardened", async
   expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
   expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   expect(headers["permissions-policy"]).toContain("microphone=(self)");
-  for (const path of ["/learn", "/learn/progress", "/auth/reset-password", "/auth/callback?next=https://example.invalid"]) {
+  for (const path of ["/learn", "/learn/progress", "/auth/callback?next=https://example.invalid"]) {
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.status()).toBe(307);
     expect(response.headers()["cache-control"]).toContain("no-store");
     expect(response.headers()["location"]).not.toContain("example.invalid");
   }
+  // The reset page must load signed-out (it reads the one-time token from the email link in the
+  // browser), but it is never cached and contains no account data until that token is accepted.
+  const reset = await request.get("/auth/reset-password", { maxRedirects: 0 });
+  expect(reset.status()).toBe(200);
+  expect(reset.headers()["cache-control"]).toContain("no-store");
+  const html = await reset.text();
+  expect(html).not.toContain("access_token");
+  expect(html).toContain("Checking your reset link");
 });
 
 test("service worker purges legacy private data and does not cache private requests", async ({ page }) => {

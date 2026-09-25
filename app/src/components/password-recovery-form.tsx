@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { requestPasswordReset } from "@/lib/supabase/recovery";
 import { PasswordInput } from "./password-input";
 
 export function PasswordRecoveryForm({ mode }: { mode: "request" | "reset" }) {
@@ -39,9 +40,7 @@ export function PasswordRecoveryForm({ mode }: { mode: "request" | "reset" }) {
           return;
         }
       } else {
-        const { error: requestError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        });
+        const { error: requestError } = await requestPasswordReset(email);
         if (requestError) {
           setError("Could not send a reset link. Please wait a moment and try again.");
           return;
@@ -61,7 +60,7 @@ export function PasswordRecoveryForm({ mode }: { mode: "request" | "reset" }) {
         <p role="status" className="text-sm text-neutral-200">
           {isReset
             ? "Your password has been updated."
-            : "If an account exists for that email, you will receive a password-reset link. Check your inbox and spam folder, and open the link in this browser."}
+            : "If an account exists for that email, you will receive a password-reset link. Check your inbox and spam folder. The link works on any device, once, for about an hour."}
         </p>
         <Link href={isReset ? "/learn" : "/login"} className="inline-block text-sm text-blue-400 hover:underline">
           {isReset ? "Continue to your practice" : "Back to login"}

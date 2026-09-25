@@ -96,7 +96,7 @@ Legal disclosure overrides (build time): `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_
 
 ## Account
 
-`/account` (outside the v2 route groups, so it works in both versions) holds name, password, data export (`/api/account/export`), clearing this device's data, and account deletion (`/api/account/delete`: removes recordings from Storage, then `auth.admin.deleteUser`; all tables cascade). `/auth/callback` serves both password-reset links and Google OAuth (`?next=`, same-site paths only).
+`/account` (outside the v2 route groups, so it works in both versions) holds name, password, data export (`/api/account/export`), clearing this device's data, and account deletion (`/api/account/delete`: removes recordings from Storage, then `auth.admin.deleteUser`; all tables cascade). Password reset works with Supabase's **default** email template (custom templates need SMTP): `lib/supabase/recovery.ts` sends the request with the implicit flow, so the link returns the session in the URL fragment, and `components/reset-password-gate.tsx` on `/auth/reset-password` turns it into a cookie session. This works when the email is opened in another browser or app. `/auth/confirm` (token_hash) is an alternative for a custom template; `/auth/callback` handles Google OAuth (`?next=`, same-site paths only).
 
 ## Database changes
 
