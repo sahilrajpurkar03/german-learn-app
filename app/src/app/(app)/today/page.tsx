@@ -19,6 +19,7 @@ export default async function TodayPage() {
     startUnit: snapshot.settings.start_unit,
     lessons: snapshot.lessons,
     dueCount: due,
+    reviewedToday: (snapshot.days.find((day) => day.date === snapshot.today)?.reviews ?? 0) > 0,
   };
   const action = nextAction(path, units, state);
   let hero: TodayHero;

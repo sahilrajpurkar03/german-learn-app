@@ -154,6 +154,10 @@ test("today's single next action follows placement, review pressure, then the co
   assert.ok(resumed.kind === "lesson" && resumed.resume && resumed.lesson.id === "a1-u01-l2");
   const skipped = nextAction(path, units, { placed: true, startUnit: 3, lessons: {}, dueCount: 0 });
   assert.equal(skipped.kind === "lesson" && skipped.lesson.id, "a1-u03-l1");
+  // After finishing a review today, leftover due words no longer take over the top of Today.
+  const afterReview = nextAction(path, units, { placed: true, startUnit: 1, lessons: {}, dueCount: 30, reviewedToday: true });
+  assert.equal(afterReview.kind, "lesson");
+  assert.equal(nextAction(path, units, { placed: true, startUnit: 1, lessons: {}, dueCount: 30, reviewedToday: false }).kind, "review");
   assert.equal(placementToUnit("a1", 20), 1);
   assert.equal(placementToUnit("a1", 70), 3);
   assert.equal(placementToUnit("a2", 70), 6);

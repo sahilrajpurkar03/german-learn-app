@@ -9,6 +9,8 @@ export type CourseState = {
   startUnit: number;
   lessons: Record<string, LessonState>;
   dueCount: number;
+  /** A review session was finished today: leftover due words are offered, not forced. */
+  reviewedToday?: boolean;
 };
 
 export type NextAction =
@@ -31,7 +33,7 @@ export function nextLesson(path: Lesson[], units: Unit[], state: CourseState): L
 export function nextAction(path: Lesson[], units: Unit[], state: CourseState): NextAction {
   if (!state.placed) return { kind: "placement", href: "/welcome", title: "Find your starting point", detail: "Two quick questions, then your first lesson." };
   const review = { kind: "review" as const, href: "/review/session", title: `Review ${Math.min(state.dueCount, 15)} ${state.dueCount === 1 ? "word" : "words"}`, detail: `About ${Math.max(2, Math.round(Math.min(state.dueCount, 15) / 4))} minutes · keeps them in your memory`, count: state.dueCount };
-  if (state.dueCount >= REVIEW_FIRST_THRESHOLD) return review;
+  if (state.dueCount >= REVIEW_FIRST_THRESHOLD && !state.reviewedToday) return review;
   const lesson = nextLesson(path, units, state);
   if (lesson) {
     const unit = units.find((entry) => entry.id === lesson.unitId)!;

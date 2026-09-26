@@ -128,13 +128,16 @@ test("placed words can be dragged or moved with the keyboard, and speaking can b
       // Place the words in the wrong order: last word first.
       for (const word of [...words.slice(1), words[0]]) await bank.getByRole("button", { name: word, exact: true }).first().click();
       const sentence = page.getByRole("list", { name: "Your sentence" });
+      await page.waitForTimeout(700); // let the tiles finish flying into place before measuring them
       const first = sentence.getByRole("listitem").filter({ hasText: words[0] });
       const target = sentence.getByRole("listitem").first();
       const from = (await first.boundingBox())!;
       const to = (await target.boundingBox())!;
       await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
       await page.mouse.down();
-      await page.mouse.move(to.x + 6, to.y + to.height / 2, { steps: 12 });
+      await page.mouse.move(from.x + from.width / 2 + 4, from.y + from.height / 2, { steps: 3 });
+      await page.mouse.move(to.x + 6, to.y + to.height / 2, { steps: 20 });
+      await page.waitForTimeout(150);
       await page.mouse.up();
       await expect(sentence.getByRole("listitem").first()).toContainText(words[0]);
       // Keyboard: move the first word one to the right and back.
@@ -173,4 +176,32 @@ test("reset links from the default email work in any browser and leave no tokens
   await page.goto("/auth/forgot-password");
   await page.goto("/auth/reset-password#error=access_denied&error_description=Email+link+is+invalid+or+has+expired");
   await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
+});
+
+test("browsers without speech recognition (Firefox) get a clear note and can still do speaking steps", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "webkitSpeechRecognition", { value: undefined, configurable: true });
+    Object.defineProperty(window, "SpeechRecognition", { value: undefined, configurable: true });
+  });
+  await page.goto("/demo");
+  for (const step of lesson.steps) {
+    if (step.type === "repeat") {
+      await expect(page.getByText("This browser can't listen to you")).toBeVisible();
+      await expect(page.getByText("Firefox doesn't support speech recognition")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Tap and speak" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Can.t speak now/ })).toHaveCount(0);
+      await page.getByRole("button", { name: "I said it aloud" }).click();
+      continue;
+    }
+    if (step.type === "speak") {
+      await expect(page.getByText("This browser can't listen to you")).toBeVisible();
+      await expect(page.getByPlaceholder("Type what you said…")).toBeVisible();
+      await page.getByLabel("Your answer in German").fill(step.accepted[0]);
+      await page.getByRole("button", { name: "Check", exact: true }).click();
+      await expect(page.getByText(/Richtig|Super|Genau|Sehr gut|Toll|Perfekt|Klasse|Prima/).first()).toBeVisible();
+      return;
+    }
+    await answer(page, step);
+  }
+  throw new Error("lesson has no speak step");
 });

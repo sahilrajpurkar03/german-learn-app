@@ -104,3 +104,18 @@ test("custom lessons play through the same player; free replies are compared, no
   assert.equal(checkAnswer(played.steps[0], "Ich hätte gern einen Termin am Montag").verdict, "seen");
   assert.equal(checkAnswer(played.steps[0], "Ich brauche einen Termin").verdict, "correct");
 });
+
+test("an overdue backlog from the old app is spread over days instead of being due all at once", async () => {
+  const { spreadBacklog } = await import("./legacy-import.ts");
+  const state = (index: number, dueAt: string): MemoryState => ({ key: `t.cafe.${index}`, ease: 2.5, intervalDays: 1, repetitions: 1, dueAt, strength: 0.2, lapses: 0, seen: 2, correct: 1, introducedAt: dueAt, lastSeenAt: dueAt });
+  const overdue = Array.from({ length: 25 }, (_, index) => state(index, new Date(now.getTime() - (30 - index) * 3600000).toISOString()));
+  const future = state(99, new Date(now.getTime() + 5 * 86400000).toISOString());
+  const spread = spreadBacklog([...overdue, future], now);
+  const dueNow = spread.filter((entry) => Date.parse(entry.dueAt) <= now.getTime()).length;
+  assert.equal(dueNow, 10, "only the first ten are due straight away");
+  const later = spread.filter((entry) => Date.parse(entry.dueAt) > now.getTime() && entry.key !== future.key).map((entry) => Math.round((Date.parse(entry.dueAt) - now.getTime()) / 86400000));
+  assert.deepEqual([...new Set(later)].sort(), [1, 2], "the rest come back over the next two days");
+  assert.equal(later.filter((day) => day === 1).length, 10);
+  assert.equal(spread.find((entry) => entry.key === future.key)?.dueAt, future.dueAt, "future dates are untouched");
+  assert.equal(spread.find((entry) => entry.key === "t.cafe.0")?.dueAt, overdue[0].dueAt, "the oldest stay due now");
+});

@@ -16,7 +16,7 @@ export function xpFor(verdict: Verdict, retry: boolean): number {
   return retry ? 1 : 2;
 }
 
-export type DayActivity = { date: string; xp: number; goalXp: number; goalMet: boolean; freezeUsed: boolean };
+export type DayActivity = { date: string; xp: number; goalXp: number; goalMet: boolean; freezeUsed: boolean; reviews?: number };
 export type StreakStats = { current: number; longest: number; lastDate: string | null; freezes: number; freezeProgress: number };
 
 export const EMPTY_STATS: StreakStats = { current: 0, longest: 0, lastDate: null, freezes: 0, freezeProgress: 0 };

@@ -3,6 +3,7 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import { Mic, MicOff, Square } from "lucide-react";
 import { useVoice } from "@/components/studio/use-voice";
+import { isSpeechRecognitionSupported } from "@/lib/speech";
 import { SKIP_SPEAKING } from "@/lib/course/types";
 import { Prompt, SpeakButton, type ExerciseProps } from "./shared";
 
@@ -34,6 +35,8 @@ export function TextExercise({ step, disabled, onReady, onSubmit, onSpeaking }: 
   const spoken = step.type === "speak" || step.type === "repeat";
   const canSpeak = spoken || step.type === "respond";
   const off = useSyncExternalStore(subscribe, speakingOff, () => false);
+  // Firefox (and some embedded browsers) can't listen; the exercise then works by typing.
+  const canListen = useSyncExternalStore(() => () => {}, isSpeechRecognitionSupported, () => true);
 
   function change(next: string) {
     setValue(next);
@@ -55,7 +58,7 @@ export function TextExercise({ step, disabled, onReady, onSubmit, onSpeaking }: 
     else void voice.record(change);
   }
 
-  if (spoken && off) {
+  if (spoken && off && canListen) {
     return (
       <div className="flex flex-col items-center gap-4 py-8 text-center">
         <span className="grid h-16 w-16 place-items-center rounded-3xl bg-surface-2 text-ink-soft"><MicOff size={30} aria-hidden="true" /></span>
@@ -90,7 +93,16 @@ export function TextExercise({ step, disabled, onReady, onSubmit, onSpeaking }: 
       {step.type === "fill_gap" && step.gap && (
         <p lang="de" className="text-2xl">{step.gap.before}<span className="mx-1 inline-block min-w-16 border-b-4 border-line" />{step.gap.after}</p>
       )}
-      {spoken && (
+      {spoken && !canListen && (
+        <div role="note" className="rounded-2xl bg-gold-soft p-4 text-sm text-ink">
+          <p className="font-semibold">This browser can&apos;t listen to you</p>
+          <p className="mt-1">Firefox doesn&apos;t support speech recognition. Say the sentence out loud anyway, then {step.type === "repeat" ? "type it below or tap “I said it aloud”" : "type it below"}. To use the microphone, open Sprechen in Chrome, Edge or Safari.</p>
+          {step.type === "repeat" && (
+            <button type="button" disabled={disabled} onClick={() => onSubmit(SKIP_SPEAKING)} className="mt-3 min-h-11 rounded-xl bg-brand px-4 font-semibold text-on-brand">I said it aloud</button>
+          )}
+        </div>
+      )}
+      {spoken && canListen && (
         <div className="flex flex-col items-center gap-3">
           <button type="button" disabled={disabled} onClick={toggleMic}
             className={`grid h-24 w-24 place-items-center rounded-full text-white shadow-[var(--shadow-lift)] transition ${voice.listening ? "bg-danger animate-pulse" : "bg-brand"}`}
@@ -105,21 +117,21 @@ export function TextExercise({ step, disabled, onReady, onSubmit, onSpeaking }: 
         <textarea ref={input} lang="de" rows={2} value={value} disabled={disabled} autoCapitalize="sentences" autoCorrect="off" spellCheck={false}
           onChange={(event) => change(event.target.value)}
           onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); input.current?.form?.requestSubmit(); } }}
-          placeholder={spoken ? "What you said appears here — or type it" : step.type === "dictation" ? "Type the German you hear…" : "Type in German…"}
+          placeholder={spoken ? (canListen ? "What you said appears here — or type it" : "Type what you said…") : step.type === "dictation" ? "Type the German you hear…" : "Type in German…"}
           className="w-full resize-none rounded-2xl border-2 border-line bg-surface px-4 py-3 text-xl text-ink shadow-inner outline-none transition focus:border-brand disabled:opacity-70" />
       </label>
       <div className="flex flex-wrap items-center gap-2">
         {SPECIAL.map((char) => (
           <button key={char} type="button" disabled={disabled} onClick={() => insert(char)} className="h-10 w-10 rounded-lg border-2 border-line bg-surface text-lg font-semibold hover:border-brand" aria-label={`Insert ${char}`}>{char}</button>
         ))}
-        {canSpeak && !spoken && (
+        {canSpeak && !spoken && canListen && (
           <button type="button" disabled={disabled} onClick={toggleMic}
             className={`ml-auto inline-flex h-10 items-center gap-1.5 rounded-lg border-2 px-3 text-sm font-semibold ${voice.listening ? "border-danger text-danger" : "border-line text-ink-soft hover:border-brand hover:text-brand"}`}>
             {voice.listening || voice.starting ? <Square size={15} aria-hidden="true" /> : <Mic size={15} aria-hidden="true" />}
             {voice.starting ? "Cancel" : voice.listening ? "Stop" : "Speak"}
           </button>
         )}
-        {spoken && (
+        {spoken && canListen && (
           <button type="button" disabled={disabled} onClick={() => { voice.stop(); setSpeakingOff(15); onSubmit(SKIP_SPEAKING); }}
             className="ml-auto inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink-soft hover:bg-surface-2 hover:text-ink">
             <MicOff size={15} aria-hidden="true" />Can&apos;t speak now

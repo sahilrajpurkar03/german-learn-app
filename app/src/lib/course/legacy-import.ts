@@ -31,6 +31,19 @@ export function goalFromMinutes(minutes: number | undefined): 30 | 50 | 80 | und
   return minutes >= 45 ? 80 : minutes >= 30 ? 50 : 30;
 }
 
+export const BACKLOG_PER_DAY = 10;
+
+/** Words that were already overdue come back over the next days (oldest first), not all at once. */
+export function spreadBacklog(states: MemoryState[], now: Date, perDay = BACKLOG_PER_DAY): MemoryState[] {
+  const overdue = states.filter((state) => Date.parse(state.dueAt) <= now.getTime()).sort((left, right) => Date.parse(left.dueAt) - Date.parse(right.dueAt));
+  const shifted = new Map<string, string>();
+  overdue.forEach((state, index) => {
+    const days = Math.floor(index / perDay);
+    if (days > 0) shifted.set(state.key, new Date(now.getTime() + days * 86400000).toISOString());
+  });
+  return states.map((state) => (shifted.has(state.key) ? { ...state, dueAt: shifted.get(state.key)! } : state));
+}
+
 export function mapLegacy(input: LegacyImport, lookup: (key: string) => Item | undefined, turnItems: Item[], now: Date): { items: MemoryState[]; completedLessons: { lessonId: string; at: string }[]; goalXp?: 30 | 50 | 80 } {
   const nowIso = now.toISOString();
   const items = new Map<string, MemoryState>();
@@ -53,6 +66,6 @@ export function mapLegacy(input: LegacyImport, lookup: (key: string) => Item | u
     items.set(key, { key, ease: 2.5, intervalDays: 0, repetitions: 0, dueAt: validDate(phrase.due, nowIso), strength: 0.04, lapses: 0, seen: 1, correct: 0, introducedAt: nowIso, lastSeenAt: nowIso });
   }
   const completedLessons = Object.entries(input.completed ?? {}).filter(([missionId]) => /^[a-z0-9-]+$/.test(missionId)).map(([missionId, entry]) => ({ lessonId: conversationLessonId(missionId), at: validDate(entry.at, nowIso) }));
-  return { items: [...items.values()], completedLessons, goalXp: goalFromMinutes(input.goal) };
+  return { items: spreadBacklog([...items.values()], now), completedLessons, goalXp: goalFromMinutes(input.goal) };
 }
 

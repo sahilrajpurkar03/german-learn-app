@@ -64,7 +64,7 @@ export async function loadSnapshot(client: Client, userId: string, now = new Dat
     stats: stats.data
       ? { current: stats.data.streak_current, longest: stats.data.streak_longest, lastDate: stats.data.streak_last_date, freezes: stats.data.freezes, freezeProgress: stats.data.freeze_progress, xpTotal: stats.data.xp_total }
       : { ...EMPTY_STATS, xpTotal: 0 },
-    days: (days.data ?? []).map((day) => ({ date: day.local_date, xp: day.xp, goalXp: day.goal_xp, goalMet: day.goal_met, freezeUsed: day.freeze_used })),
+    days: (days.data ?? []).map((day) => ({ date: day.local_date, xp: day.xp, goalXp: day.goal_xp, goalMet: day.goal_met, freezeUsed: day.freeze_used, reviews: day.reviews })),
     lessons: Object.fromEntries((progress.data ?? []).map((row) => [row.lesson_id, { status: row.status, stepIndex: row.step_index, bestScore: row.best_score, completedCount: row.completed_count, lastRunId: row.last_run_id }])),
     memory: (items.data ?? []).map(toMemory),
     today,
