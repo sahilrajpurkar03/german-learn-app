@@ -65,7 +65,7 @@ export function PlacementFlow() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 pb-8 pt-[max(env(safe-area-inset-top),1rem)]">
+    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 pb-8 pt-[calc(env(safe-area-inset-top)+1rem)]">
       <div className="flex items-center gap-3">
         <Link href="/today" aria-label="Leave the level check" className="grid h-10 w-10 place-items-center rounded-xl text-ink-soft hover:bg-surface-2"><X size={22} aria-hidden="true" /></Link>
         <ProgressBar value={answers.length} max={16} label={`Question ${Math.min(answers.length + 1, 16)} of 16`} />

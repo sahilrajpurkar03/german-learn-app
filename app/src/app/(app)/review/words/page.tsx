@@ -17,7 +17,7 @@ export default async function WordsPage() {
       return info ? [{ key: state.key, de: info.de, en: info.en, gender: info.gender, strength: state.strength, due: state.dueAt }] : [];
     });
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
       <Link href="/review" className="inline-flex items-center gap-1 text-sm font-semibold text-ink-soft hover:text-brand"><ArrowLeft size={16} aria-hidden="true" />Review</Link>
       <h1 className="mt-3 font-display text-3xl font-semibold">My words</h1>
       <p className="mb-5 mt-1 text-ink-soft">{entries.length} words, phrases and patterns you&apos;ve met. Tap to hear them.</p>

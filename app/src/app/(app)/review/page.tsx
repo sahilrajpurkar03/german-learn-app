@@ -22,7 +22,7 @@ export default async function ReviewPage() {
   ];
   const tomorrow = memory.filter((state) => { const time = Date.parse(state.dueAt); return time > now.getTime() && time <= now.getTime() + 86400000; }).length;
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
       <h1 className="font-display text-3xl font-semibold">Review</h1>
       <p className="mt-1 text-ink-soft">Everything you learn comes back just before you would forget it.</p>
 

@@ -23,7 +23,7 @@ export default async function MePage() {
     { label: "Streak freezes", value: snapshot.stats.freezes },
   ];
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-8 px-4 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+    <main className="mx-auto w-full max-w-2xl space-y-8 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
       <header className="flex items-center gap-4">
         <span className="grid h-16 w-16 place-items-center rounded-3xl bg-brand text-2xl font-bold text-on-brand" aria-hidden="true">{name.slice(0, 1).toUpperCase()}</span>
         <div className="flex-1">

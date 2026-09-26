@@ -35,7 +35,7 @@ export function TodayView({ name, greeting, streak, freezes, todayXp, goalXp, he
 }) {
   const goalMet = todayXp >= goalXp;
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="md:hidden"><Logo size={34} withName={false} /></span>

@@ -18,7 +18,7 @@ export default async function ProgressPage() {
   const passedUnits = catalog().outlines.filter((outline) => snapshot.lessons[outline.checkpoint.id]?.status === "completed");
   const total = days.reduce((sum, day) => sum + day.xp, 0);
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-8 px-4 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+    <main className="mx-auto w-full max-w-2xl space-y-8 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
       <div>
         <Link href="/me" className="inline-flex items-center gap-1 text-sm font-semibold text-ink-soft hover:text-brand"><ArrowLeft size={16} aria-hidden="true" />Me</Link>
         <h1 className="mt-3 font-display text-3xl font-semibold">Progress</h1>

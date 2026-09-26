@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createClient } from "../supabase/server";
@@ -20,11 +21,12 @@ export function learningAdmin(): Client {
   return createSupabaseClient<Database>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-export async function currentLearner() {
+/** Cached per request: the layout and the page both ask, but the login check (a network call) runs once. */
+export const currentLearner = cache(async () => {
   const client = await createClient();
   const { data } = await client.auth.getUser();
   return data.user ? { client, user: data.user } : null;
-}
+});
 
 function settingsOf(row: Partial<LearnerSettingsRow>): LearnerSnapshot["settings"] {
   return {
@@ -47,19 +49,21 @@ export type LearnerSnapshot = {
 
 /** Everything the app shell needs, read with the learner's own (RLS-restricted) session. */
 export async function loadSnapshot(client: Client, userId: string, now = new Date()): Promise<LearnerSnapshot> {
-  const [settings, stats, progress, items] = await Promise.all([
+  // One round trip: the recent days are fetched with a margin (the learner's own "today" isn't known yet) and trimmed below.
+  const from = addDays(localDate(now, "UTC"), -15);
+  const [settings, stats, progress, items, recent] = await Promise.all([
     client.from("learner_settings").select("*").eq("user_id", userId).maybeSingle(),
     client.from("learner_stats").select("*").eq("user_id", userId).maybeSingle(),
     client.from("lesson_progress").select("*").eq("user_id", userId),
     client.from("learner_items").select("*").eq("user_id", userId).limit(5000),
+    client.from("daily_activity").select("*").eq("user_id", userId).gte("local_date", from).order("local_date"),
   ]);
-  const unavailable = [settings.error, stats.error, progress.error, items.error].some((error) => missingTable(error));
+  const unavailable = [settings.error, stats.error, progress.error, items.error, recent.error].some((error) => missingTable(error));
   const base = settings.data ?? { ...DEFAULT_SETTINGS };
   const today = localDate(now, base.timezone);
   if (unavailable) return { available: false, settings: settingsOf(base), hasSettings: false, stats: { ...EMPTY_STATS, xpTotal: 0 }, days: [], lessons: {}, memory: [], today };
-  fail(settings.error || stats.error || progress.error || items.error);
-  const days = await client.from("daily_activity").select("*").eq("user_id", userId).gte("local_date", addDays(today, -13)).order("local_date");
-  fail(days.error);
+  fail(settings.error || stats.error || progress.error || items.error || recent.error, "snapshot");
+  const days = { data: (recent.data ?? []).filter((day) => day.local_date >= addDays(today, -13)) };
   return {
     available: true,
     settings: settingsOf(base),

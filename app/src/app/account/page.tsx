@@ -23,7 +23,7 @@ export default async function AccountPage() {
     <div className="v2 flex min-h-dvh flex-1 flex-col">
       <ThemeScript />
       <MotionProvider>
-        <main className="mx-auto w-full max-w-2xl px-4 pb-12 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+        <main className="mx-auto w-full max-w-2xl px-4 pb-12 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
           <Link href={back.href} className="inline-flex items-center gap-1 text-sm font-semibold text-ink-soft hover:text-brand"><ArrowLeft size={16} aria-hidden="true" />{back.label}</Link>
           <h1 className="mb-6 mt-3 font-display text-3xl font-semibold">Account & privacy</h1>
           <AccountPanel name={name === "there" ? "" : name} email={user.email ?? ""} providers={providers} />

@@ -16,7 +16,7 @@ export default async function CoursePage() {
   const checkpoints = Object.fromEntries(outlines.map((outline) => [outline.checkpoint.id, completed(outline.checkpoint.id)]));
   const next = nextLesson(coursePath(), units, { placed: true, startUnit: snapshot.settings.start_unit, lessons: snapshot.lessons, dueCount: 0 });
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
       <h1 className="font-display text-3xl font-semibold">Your course</h1>
       <p className="mt-1 text-ink-soft">Everyday German for life in Germany, one unit at a time.</p>
       <nav aria-label="Levels" className="mt-5 flex gap-2 overflow-x-auto pb-1">

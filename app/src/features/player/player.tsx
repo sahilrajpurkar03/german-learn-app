@@ -151,7 +151,7 @@ export function Player(props: PlayerProps) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col">
-      <header className="sticky top-0 z-20 flex items-center gap-3 bg-canvas/90 px-4 pb-3 pt-[max(env(safe-area-inset-top),0.75rem)] backdrop-blur">
+      <header className="sticky top-0 z-20 flex items-center gap-3 bg-canvas/90 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur">
         <Link href={props.exitHref} aria-label="Leave the lesson (your place is saved)" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-soft hover:bg-surface-2 hover:text-ink"><X size={24} aria-hidden="true" /></Link>
         <ProgressBar value={progress.done} max={progress.total} label={`Lesson progress: ${progress.done} of ${progress.total}`} tone={state.streak >= 3 ? "gold" : "brand"} />
         {online && sync.state === "error" && (
@@ -287,7 +287,7 @@ function Completion(props: PlayerProps & { stats: ReturnType<typeof summary>; se
   const goalMet = server ? server.todayXp >= server.goalXp : false;
   const learned = useMemo(() => props.learned ?? [], [props.learned]);
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center gap-6 px-5 pb-10 pt-[max(env(safe-area-inset-top),2rem)] text-center">
+    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col items-center gap-6 px-5 pb-10 pt-[calc(env(safe-area-inset-top)+2rem)] text-center">
       <m.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 260, damping: 12 }}
         className={`grid h-28 w-28 place-items-center rounded-[2rem] text-6xl shadow-[var(--shadow-lift)] ${checkpointFailed ? "bg-surface" : "bg-gold-soft"}`} aria-hidden="true">
         {checkpointFailed ? "💪" : props.kind === "checkpoint" ? "🏆" : props.kind === "review" ? "🧠" : "🎉"}

@@ -43,7 +43,7 @@ export function WelcomeFlow() {
   const choice = (active: boolean) => `flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-left transition ${active ? "border-brand bg-brand-soft shadow-[0_3px_0_var(--v2-brand)]" : "border-line bg-surface shadow-[0_3px_0_var(--v2-line)] hover:bg-surface-2"}`;
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 pb-8 pt-[max(env(safe-area-inset-top),1.25rem)]">
+    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
       <div className="flex items-center gap-3">
         {step > 0 ? <button type="button" onClick={() => setStep(step - 1)} className="grid h-10 w-10 place-items-center rounded-xl text-ink-soft hover:bg-surface-2" aria-label="Back"><ArrowLeft size={22} aria-hidden="true" /></button> : <Logo size={32} withName={false} />}
         <ProgressBar value={step + 1} max={3} label={`Step ${step + 1} of 3`} />

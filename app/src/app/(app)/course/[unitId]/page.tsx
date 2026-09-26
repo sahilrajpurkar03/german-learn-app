@@ -26,7 +26,7 @@ export default async function UnitPage({ params }: { params: Promise<{ unitId: s
   const firstOpen = core.find((lesson) => status(lesson.id) !== "completed");
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-[max(env(safe-area-inset-top),1rem)] md:pt-10">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
       <Link href="/course" className="inline-flex items-center gap-1 text-sm font-semibold text-ink-soft hover:text-brand"><ArrowLeft size={16} aria-hidden="true" />Course</Link>
       <header className="mt-3 flex items-center gap-4">
         <span className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl bg-surface text-5xl shadow-[var(--shadow-card)]" aria-hidden="true">{unit.emoji}</span>
