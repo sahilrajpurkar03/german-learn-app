@@ -57,7 +57,7 @@ Local builds and E2E runs need `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPAB
 
 **Server truth**
 - The player (`features/player/`, a pure reducer in `engine.ts`) queues answers in IndexedDB (`outbox.ts`) and posts them to `/api/learning/attempts`.
-- `lib/learning/server.ts#processBatch` re-scores each answer with `findStep` + `checkAnswer` and writes the tables from migration `0006` using the service role.
+- `lib/learning/process.ts#processBatch` (no Next.js imports; `server.ts` supplies the service-role client) re-scores each answer with `findStep` + `checkAnswer` and writes the tables from migration `0006`. `process.test.ts` runs it against a real Postgres (PGlite) with the migrations applied. Failures carry a `stage` and database error `code` to the client, and the player shows them ("Not saved · retry", the result screen's reference). The answer queue is `lib/course/outbox-core.ts` (tested in `outbox.test.ts`) wrapped by `features/player/outbox.ts`.
 - Learners can only SELECT those tables (tested in `tests/learning-storage.test.mjs`); `learner_settings` is the one learner-writable table. Never let the client write XP, memory or progress directly.
 
 **One memory table**

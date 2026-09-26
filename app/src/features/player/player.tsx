@@ -16,7 +16,7 @@ import { Partner, type PartnerMood } from "@/ui/partner";
 import { currentStep, playerReducer, progressOf, startPlayer, summary } from "./engine";
 import { playGerman, preloadGerman, stopAudio } from "./audio";
 import { celebrate, playEffect } from "./feedback-fx";
-import { enqueue, flush, installOutboxSync, type ServerSummary } from "./outbox";
+import { enqueue, flush, installOutboxSync, onServerSummary, useSyncStatus, type ServerSummary, type SyncStatus } from "./outbox";
 import { IntroCard, PatternCard } from "./exercises/cards";
 import { ChoiceExercise } from "./exercises/choice";
 import { MatchExercise } from "./exercises/match";
@@ -63,7 +63,9 @@ export function Player(props: PlayerProps) {
   const [pendingEntry, setPendingEntry] = useState<{ key: string; value: string | null }>({ key: "", value: null });
   const [translationKey, setTranslationKey] = useState<string | null>(null);
   const [combo, setCombo] = useState<number | null>(null);
-  const [server, setServer] = useState<ServerSummary | null>(props.daily ?? null);
+  // Set only when the server confirms this run; the numbers passed in `daily` are from before the lesson.
+  const [server, setServer] = useState<ServerSummary | null>(null);
+  const sync = useSyncStatus();
   const shownAt = useRef(0);
   const step = currentStep(state);
   const stepKey = step ? `${step.id}:${state.done}` : "";
@@ -73,7 +75,11 @@ export function Player(props: PlayerProps) {
   const progress = progressOf(state);
   const online = props.mode === "online";
 
-  useEffect(() => { if (online) installOutboxSync(); }, [online]);
+  useEffect(() => {
+    if (!online) return;
+    installOutboxSync();
+    return onServerSummary(setServer);
+  }, [online]);
   useEffect(() => () => stopAudio(), []);
 
   useEffect(() => {
@@ -90,7 +96,7 @@ export function Player(props: PlayerProps) {
       attemptId: crypto.randomUUID(), runId: props.runId, lessonId: props.lessonId, stepId, kind, answer: answer.slice(0, 500),
       responseMs: Math.min(3600000, Math.max(0, Math.round(performance.now() - shownAt.current))), occurredAt: new Date().toISOString(), stepIndex: Math.max(0, state.done - (props.warmupCount ?? 0)),
     };
-    void enqueue([attempt]).then(() => flush()).then((summary) => { if (summary) setServer(summary); });
+    void enqueue([attempt]).then(() => flush());
   }
 
   function submit(answer: string) {
@@ -121,7 +127,7 @@ export function Player(props: PlayerProps) {
     void celebrate(props.kind === "checkpoint" ? "big" : "lesson");
     if (online) {
       const attempt: Attempt = { attemptId: crypto.randomUUID(), runId: props.runId, lessonId: props.lessonId, stepId: props.lessonId, kind: "complete", answer: "", responseMs: 0, occurredAt: new Date().toISOString(), stepIndex: 0 };
-      void enqueue([attempt]).then(() => flush()).then((summary) => { if (summary) setServer(summary); });
+      void enqueue([attempt]).then(() => flush());
     }
   }, [finished, online, props.kind, props.lessonId, props.runId]);
 
@@ -135,7 +141,7 @@ export function Player(props: PlayerProps) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  if (finished) return <Completion {...props} stats={summary(state)} server={server} />;
+  if (finished) return <Completion {...props} stats={summary(state)} server={server} sync={sync} />;
   if (!step) return null;
 
   const result = state.result;
@@ -148,6 +154,10 @@ export function Player(props: PlayerProps) {
       <header className="sticky top-0 z-20 flex items-center gap-3 bg-canvas/90 px-4 pb-3 pt-[max(env(safe-area-inset-top),0.75rem)] backdrop-blur">
         <Link href={props.exitHref} aria-label="Leave the lesson (your place is saved)" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-soft hover:bg-surface-2 hover:text-ink"><X size={24} aria-hidden="true" /></Link>
         <ProgressBar value={progress.done} max={progress.total} label={`Lesson progress: ${progress.done} of ${progress.total}`} tone={state.streak >= 3 ? "gold" : "brand"} />
+        {online && sync.state === "error" && (
+          <button type="button" onClick={() => void flush()} title={`${sync.message} (tap to retry)`} aria-label={`Progress not saved yet: ${sync.message} Tap to retry.`}
+            className="shrink-0 rounded-full bg-gold-soft px-2.5 py-1 text-xs font-bold text-gold">Not saved · retry</button>
+        )}
         <span className="shrink-0 text-sm font-bold tabular text-ink-soft" aria-live="polite"><Sparkles size={14} className="-mt-0.5 mr-0.5 inline text-gold" aria-hidden="true" />{state.xp}</span>
       </header>
 
@@ -270,8 +280,8 @@ function FeedbackSheet({ step, result, onContinue }: { step: Step; result: NonNu
   );
 }
 
-function Completion(props: PlayerProps & { stats: ReturnType<typeof summary>; server: ServerSummary | null }) {
-  const { stats, server } = props;
+function Completion(props: PlayerProps & { stats: ReturnType<typeof summary>; server: ServerSummary | null; sync: SyncStatus }) {
+  const { stats, server, sync } = props;
   const checkpointFailed = props.kind === "checkpoint" && stats.accuracy < 80;
   const heading = checkpointFailed ? "So close!" : props.kind === "review" ? "Review done!" : props.kind === "checkpoint" ? "Unit complete!" : "Lesson complete!";
   const goalMet = server ? server.todayXp >= server.goalXp : false;
@@ -293,6 +303,19 @@ function Completion(props: PlayerProps & { stats: ReturnType<typeof summary>; se
         <Stat label="Accuracy" tone="success"><CountUp value={stats.accuracy} />%</Stat>
         <Stat label="Best run" tone="brand"><CountUp value={stats.bestStreak} /></Stat>
       </div>
+      {props.mode === "online" && !server && (
+        sync.state === "error" ? (
+          <div role="alert" className="w-full rounded-3xl bg-gold-soft p-4 text-left">
+            <p className="font-semibold">Your progress isn&apos;t saved yet</p>
+            <p className="mt-1 text-sm">{sync.message}</p>
+            {sync.detail && <p className="mt-1 text-xs text-ink-soft">Reference: {sync.detail}</p>}
+            {!sync.message.includes("device") && <p className="mt-2 text-sm text-ink-soft">Your answers stay on this device and are sent again automatically.</p>}
+            <Button type="button" size="sm" className="mt-3" onClick={() => void flush()}>Try again</Button>
+          </div>
+        ) : (
+          <p role="status" className="w-full rounded-3xl bg-surface p-4 text-center text-ink-soft shadow-[var(--shadow-card)]">Saving your progress…</p>
+        )
+      )}
       {server && (
         <m.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex w-full items-center gap-4 rounded-3xl bg-surface p-4 text-left shadow-[var(--shadow-card)]">
           <ProgressRing value={server.todayXp} max={server.goalXp} label={`Daily goal ${server.todayXp} of ${server.goalXp} XP`} tone={goalMet ? "success" : "gold"}>
