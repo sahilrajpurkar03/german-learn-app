@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseBuffer } from "music-metadata";
 import { z } from "zod";
 import { createClient } from "./supabase/server";
+import { describeServiceKey } from "./supabase/keys";
 import type { Database } from "./supabase/database.types";
 import type { Json } from "./personal-database";
 import { createChapterAI } from "./chapter-ai";
@@ -31,6 +32,8 @@ export function personalAdmin(): Client {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new ChapterHttpError(503, "Private chapter storage is not configured yet.");
+  const problem = describeServiceKey(key).problem;
+  if (problem) throw new ChapterHttpError(503, `The server's SUPABASE_SERVICE_ROLE_KEY is wrong: ${problem}`);
   return createSupabaseClient<Database>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 

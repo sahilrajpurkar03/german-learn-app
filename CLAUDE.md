@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repository layout
 
 - `app/`: the Next.js app ("Sprechen", a German-learning PWA). This is also the Vercel project root. Run all npm commands from here.
-- `supabase/migrations/`: numbered SQL migrations (`0001`–`0007`), applied to the production Supabase project in order. Add new migrations as the next number. Never edit an applied migration. `0006`/`0007` (v2) may not be applied in production yet; check `docs/SPRECHEN-V2.md`.
+- `supabase/migrations/`: numbered SQL migrations (`0001`–`0008`), applied to the production Supabase project in order. Add new migrations as the next number. Never edit an applied migration. `0006`–`0008` (v2) may not be applied in production yet; check `docs/SPRECHEN-V2.md`.
 - `scripts/`: one-off operator helpers (`run-sql.js` applies a SQL file using `PG*` env vars; SQL for cleaning up test users).
 - `docs/`: status and design records. `SPRECHEN-V2.md` is the v2 architecture and operator runbook. `PERSONAL-CHAPTERS.md`, `ADAPTIVE-PRACTICE.md` and `SECURITY-REVIEW.md` describe v1 and the AI chapters. They record what has and has not been verified. Update them when a change affects verification status, and keep the same careful tone: state exactly what was verified and don't overclaim.
 

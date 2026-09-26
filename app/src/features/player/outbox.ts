@@ -34,8 +34,8 @@ async function post(batch: Attempt[]): Promise<SendResult> {
     if (summary && typeof summary.todayXp === "number") return { ok: true, summary };
     return { ok: false, status: response.status, message: "The server's reply could not be read.", retry: true };
   }
-  const body = await response.json().catch(() => null) as { error?: string; stage?: string; code?: string } | null;
-  const detail = [response.status, body?.stage, body?.code].filter(Boolean).join(" · ");
+  const body = await response.json().catch(() => null) as { error?: string; stage?: string; code?: string; reason?: string; key?: string } | null;
+  const detail = [response.status, body?.stage, body?.code, body?.reason, body?.key ? `key: ${body.key}` : ""].filter(Boolean).join(" · ");
   const message = body?.error ?? (response.status === 401 ? "Please sign in again." : "Your answers could not be saved yet.");
   // 400/413: the batch itself is unusable and will never succeed. Everything else can be retried.
   return { ok: false, status: response.status, message, detail, retry: response.status !== 400 && response.status !== 413 };

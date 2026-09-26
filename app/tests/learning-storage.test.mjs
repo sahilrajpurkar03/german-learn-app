@@ -102,3 +102,41 @@ test("old events are pruned and push endpoints must be https", async () => {
     await db.close();
   }
 });
+
+test("explicit grants (0008) give the server write access and learners read-only access, with no default privileges", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`
+      create role anon; create role authenticated; create role service_role bypassrls;
+      create schema auth;
+      create table auth.users(id uuid primary key);
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+      create function auth.role() returns text language sql stable as $$ select nullif(current_setting('request.jwt.claim.role', true), '') $$;
+      grant usage on schema public, auth to anon, authenticated, service_role;
+      grant execute on function auth.uid(), auth.role() to anon, authenticated, service_role;
+    `);
+    // Deliberately NO "alter default privileges": tables start with no grants for the API roles.
+    for (const file of ["0006_learning_v2.sql", "0007_push_reminders.sql"]) await db.exec(await readFile(new URL(`../../supabase/migrations/${file}`, import.meta.url), "utf8"));
+    await db.query("insert into auth.users values ($1)", [owner]);
+    await db.exec("set role service_role");
+    await assert.rejects(() => db.query("select * from learner_items"), /permission denied/, "without explicit grants the server itself is locked out");
+    await db.exec("reset role");
+    const grants = await readFile(new URL("../../supabase/migrations/0008_explicit_grants.sql", import.meta.url), "utf8");
+    await db.exec(grants);
+    await db.exec(grants); // safe to repeat
+    await db.exec("set role service_role");
+    await db.query("insert into learner_items(user_id,item_key) values ($1,'w.tee')", [owner]);
+    await db.query("insert into learning_events(attempt_id,user_id,run_id,lesson_id,step_id,exercise_type,verdict,occurred_at) values (gen_random_uuid(),$1,gen_random_uuid(),'l','s','type','correct',now())", [owner]);
+    await as(db, owner);
+    assert.equal((await db.query("select * from learner_items")).rows.length, 1);
+    for (const statement of [
+      "insert into learner_items(user_id,item_key) values ('" + owner + "','w.hack')",
+      "update learner_items set strength = 1",
+      "delete from learner_items",
+      "insert into learning_events(attempt_id,user_id,run_id,lesson_id,step_id,exercise_type,verdict,occurred_at) values (gen_random_uuid(),'" + owner + "',gen_random_uuid(),'x','x','type','correct',now())",
+    ]) await assert.rejects(() => db.query(statement), /permission denied/, statement);
+    await db.query("insert into learner_settings(user_id) values ($1)", [owner]);
+  } finally {
+    await db.close();
+  }
+});

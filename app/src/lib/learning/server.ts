@@ -2,6 +2,7 @@ import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createClient } from "../supabase/server";
+import { describeServiceKey } from "../supabase/keys";
 import type { Database } from "../supabase/database.types";
 import { EMPTY_STATS, addDays, localDate, type DayActivity, type StreakStats } from "../course/activity";
 import type { LessonState } from "../course/next-action";
@@ -14,6 +15,8 @@ export function learningAdmin(): Client {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new LearningError(503, "Progress storage is not configured on this server yet (missing service key).", "config", "no-service-key");
+  const problem = describeServiceKey(key).problem;
+  if (problem) throw new LearningError(503, `The server's SUPABASE_SERVICE_ROLE_KEY is wrong: ${problem} Replace it in Vercel with the secret (service_role) key and redeploy.`, "config", "wrong-service-key");
   return createSupabaseClient<Database>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 

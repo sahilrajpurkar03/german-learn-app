@@ -19,11 +19,13 @@ export class LearningError extends Error {
   status: number;
   stage?: string;
   code?: string;
-  constructor(status: number, message: string, stage?: string, code?: string) {
+  reason?: string;
+  constructor(status: number, message: string, stage?: string, code?: string, reason?: string) {
     super(message);
     this.status = status;
     this.stage = stage;
     this.code = code;
+    this.reason = reason;
   }
 }
 
@@ -36,7 +38,9 @@ export function fail(error: unknown, stage = "storage") {
   if (!error) return;
   const { code, message } = error as { code?: string; message?: string };
   console.error("[learning]", stage, code ?? "", message ?? "");
-  throw new LearningError(503, "Progress storage is unavailable. Your answers are kept on this device and will be sent again.", stage, code);
+  // The database's wording (e.g. "permission denied for table x") is safe to show the signed-in learner; cap its length.
+  const reason = (message ?? "").replace(/\s+/g, " ").replace(/\(.*?\)/g, "").trim().slice(0, 140) || undefined;
+  throw new LearningError(503, "Progress storage is unavailable. Your answers are kept on this device and will be sent again.", stage, code, reason);
 }
 
 export const DEFAULT_SETTINGS: Omit<LearnerSettingsRow, "user_id" | "updated_at"> = {

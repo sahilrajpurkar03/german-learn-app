@@ -1,5 +1,6 @@
 import { ChapterHttpError, privateJson, readChapterRequest } from "@/lib/chapter-http";
 import { batchSchema, currentLearner, LearningError, processBatch } from "@/lib/learning/server";
+import { describeServiceKey } from "@/lib/supabase/keys";
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
     return privateJson(await processBatch(learner.user.id, parsed.data.attempts));
   } catch (error) {
     if (error instanceof ChapterHttpError) return privateJson({ error: error.message, stage: "request" }, error.status);
-    if (error instanceof LearningError) return privateJson({ error: error.message, stage: error.stage, code: error.code }, error.status);
+    if (error instanceof LearningError) return privateJson({ error: error.message, stage: error.stage, code: error.code, reason: error.reason, key: describeServiceKey(process.env.SUPABASE_SERVICE_ROLE_KEY).kind }, error.status);
     console.error("[learning] unexpected", error instanceof Error ? `${error.name}: ${error.message}` : "unknown error");
     return privateJson({ error: "Your answers could not be saved yet. They stay on this device and will be sent again.", stage: "server", code: error instanceof Error ? error.name : undefined }, 503);
   }

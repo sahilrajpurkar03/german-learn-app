@@ -48,7 +48,7 @@ v1 spread learning over nine views in one 979-line component, four separate revi
 
 ## Operator setup (in this order)
 
-1. **Back up the database**, then apply `supabase/migrations/0006_learning_v2.sql` and `0007_push_reminders.sql` (Supabase CLI `db push`, or `scripts/run-sql.js`). They add new tables only and change nothing in v1.
+1. **Back up the database**, then apply `supabase/migrations/0006_learning_v2.sql`, `0007_push_reminders.sql` and `0008_explicit_grants.sql` (Supabase CLI `db push`, or `scripts/run-sql.js`). They add new tables only and change nothing in v1.
 2. **Check the server credentials already in Vercel:** `SUPABASE_SERVICE_ROLE_KEY` (v2 writes progress with it) and `CRON_SECRET` (at least 32 characters).
 3. **Reminders (optional).** Run `npx web-push generate-vapid-keys` and set these in Vercel Production:
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
@@ -101,6 +101,20 @@ Deletion and export have **not** been run against production yet. Try them once 
 4. **Vercel** → Environment Variables: add `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` for **Production** (and Preview, with no branch selected). Then redeploy.
 
 After Google sign-in, `/auth/callback?next=/learn` exchanges the code, uses the Google name instead of the default "Learner", and only redirects to same-site paths.
+
+## When a lesson says "Your progress isn't saved yet"
+
+The yellow box ends with a **Reference** such as `503 · events · 42501 · permission denied for table learning_events · key: jwt-anon`: HTTP status, the step that failed, the Postgres error code, the database's own words, and the kind of server key configured (never the key itself). The answers stay on the device and are sent again by "Try again".
+
+| Reference contains | Meaning | Fix |
+|---|---|---|
+| `config · wrong-service-key`, or `key: jwt-anon` / `publishable` | `SUPABASE_SERVICE_ROLE_KEY` in Vercel holds the public key | Supabase → Project Settings → API keys: copy the **service_role** (legacy) or **secret** key into that variable (Production and Preview, no branch), then redeploy |
+| `config · no-service-key`, `key: missing` | The variable is not set for Production | Add it, then redeploy |
+| `42501 · permission denied` with `key: jwt-service_role` or `secret` | The tables lack grants for the service role | Run `0008_explicit_grants.sql` in the SQL editor |
+| `42P01` or `PGRST205` | A migration has not been applied | Run `0006` and `0007` |
+| `401 · auth` | The session expired | Sign in again |
+
+## Authoring more content
 
 ## Authoring more content
 
