@@ -2,6 +2,7 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { CacheFirst, ExpirationPlugin, NetworkOnly, Serwist } from "serwist";
+import { isNetworkOnly, shouldPurgeOnActivate } from "../lib/sw-rules";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -23,8 +24,9 @@ const serwist = new Serwist({
       handler: new CacheFirst({ cacheName: "sprechen-audio", plugins: [new ExpirationPlugin({ maxEntries: 3000, maxAgeSeconds: 60 * 60 * 24 * 180 })] }),
     },
     {
-      matcher: ({ url }) => url.origin !== self.location.origin ||
-        !/^\/(?:_next\/(?:static|image)(?:\/|$)|images\/|icon-[^/]+\.png$)/.test(url.pathname),
+      // App icons and the manifest are excluded here (see isNetworkOnly): they must always be
+      // fetched fresh, so a logo update reaches an "Add to Home Screen" prompt immediately.
+      matcher: ({ url }) => url.origin !== self.location.origin || isNetworkOnly(url.pathname),
       handler: new NetworkOnly(),
     },
     ...defaultCache,
@@ -39,7 +41,9 @@ self.addEventListener("activate", (event) => {
       const cache = await caches.open(name);
       for (const request of await cache.keys()) {
         const url = new URL(request.url);
-        if (url.origin !== self.location.origin || /^\/(?:learn|auth|today|course|review|me|lesson|custom|welcome|placement|api)(?:\/|$)/.test(url.pathname)) {
+        // Also clears any app icon a previous version of this service worker had cached, so an
+        // updated logo is picked up the next time the page (or an install prompt) asks for it.
+        if (url.origin !== self.location.origin || shouldPurgeOnActivate(url.pathname)) {
           await cache.delete(request);
         }
       }

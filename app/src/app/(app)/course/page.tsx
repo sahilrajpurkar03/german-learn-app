@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Lock, Sparkles, Check, ArrowRight } from "lucide-react";
+import { Lock, Check, ArrowRight } from "lucide-react";
 import { requireSnapshot } from "@/lib/learning/guard";
-import { LEVELS, catalog } from "@/lib/course/catalog";
+import { LEVELS, catalog, getItem } from "@/lib/course/catalog";
 import { nextLesson, unitUnlocked } from "@/lib/course/next-action";
 import { coursePath } from "@/lib/course/catalog";
 import { ProgressRing } from "@/ui/progress";
+import { CourseTabs } from "@/features/course/course-tabs";
+import { CustomLibrary } from "@/features/custom/custom-library";
+import { PracticeDrill } from "@/features/practice/practice-drill";
 
 export const metadata: Metadata = { title: "Course · Sprechen" };
 
@@ -15,11 +18,17 @@ export default async function CoursePage() {
   const completed = (id: string) => snapshot.lessons[id]?.status === "completed";
   const checkpoints = Object.fromEntries(outlines.map((outline) => [outline.checkpoint.id, completed(outline.checkpoint.id)]));
   const next = nextLesson(coursePath(), units, { placed: true, startUnit: snapshot.settings.start_unit, lessons: snapshot.lessons, dueCount: 0 });
-  return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
-      <h1 className="font-display text-3xl font-semibold">Your course</h1>
-      <p className="mt-1 text-ink-soft">Everyday German for life in Germany, one unit at a time.</p>
-      <nav aria-label="Levels" className="mt-5 flex gap-2 overflow-x-auto pb-1">
+
+  const vocabulary = snapshot.memory
+    .filter((state) => getItem(state.key)?.kind === "word")
+    .map((state) => ({ key: state.key, strength: state.strength }));
+  const sentences = snapshot.memory
+    .filter((state) => getItem(state.key)?.kind === "phrase")
+    .map((state) => ({ key: state.key, strength: state.strength }));
+
+  const chapters = (
+    <>
+      <nav aria-label="Levels" className="flex gap-2 overflow-x-auto pb-1">
         {LEVELS.map((level) => (
           <span key={level.id} aria-current={level.available ? "page" : undefined}
             className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${level.available ? "bg-brand text-on-brand" : "bg-surface-2 text-ink-soft"}`}>
@@ -54,16 +63,23 @@ export default async function CoursePage() {
           );
         })}
       </ol>
-
-      <Link href="/custom" className="mt-8 flex items-center gap-4 rounded-3xl bg-gold-soft p-5 transition hover:brightness-95">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gold text-white"><Sparkles size={24} aria-hidden="true" /></span>
-        <span className="flex-1">
-          <span className="block font-semibold">Custom lessons <span className="ml-1 rounded-full bg-white/70 px-2 py-0.5 text-xs">beta</span></span>
-          <span className="block text-sm text-ink-soft">Turn a situation from your own day into a lesson.</span>
-        </span>
-        <ArrowRight size={20} className="text-ink-soft" aria-hidden="true" />
-      </Link>
       <p className="mt-6 text-center text-sm text-ink-soft">A2 and B1 are being written. Until then, every unit has extra conversations to practise.</p>
+    </>
+  );
+
+  return (
+    <main className="mx-auto w-full max-w-2xl px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
+      <h1 className="font-display text-3xl font-semibold">Your course</h1>
+      <p className="mt-1 text-ink-soft">Everyday German for life in Germany, one unit at a time.</p>
+
+      <div className="mt-5">
+        <CourseTabs
+          chapters={chapters}
+          custom={<CustomLibrary inReview={snapshot.memory.filter((state) => state.key.startsWith("c.")).map((state) => state.key)} />}
+          vocabulary={<PracticeDrill kind="vocabulary" items={vocabulary} emptyHref="/course" emptyLabel="Start a lesson first" />}
+          sentences={<PracticeDrill kind="sentence" items={sentences} emptyHref="/course" emptyLabel="Start a lesson first" />}
+        />
+      </div>
     </main>
   );
 }

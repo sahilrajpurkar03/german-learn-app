@@ -60,7 +60,7 @@ export function buildReviewStep(subject: ReviewSubject, type: ExerciseType, vari
   }
 }
 
-export function reviewStepFor(subject: ReviewSubject, state: MemoryState | undefined): Step {
+export function reviewStepFor(subject: ReviewSubject, state: Pick<MemoryState, "strength" | "seen"> | undefined): Step {
   const { type, variant } = reviewTypeFor(subject, state);
   const step = buildReviewStep(subject, type, variant);
   if (step) return step;

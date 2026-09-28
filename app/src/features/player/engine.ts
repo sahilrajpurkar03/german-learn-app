@@ -8,12 +8,15 @@ import type { Step } from "../../lib/course/types.ts";
 
 export type Outcome = { stepId: string; verdict: CheckResult["verdict"]; retry: boolean; xp: number; answer: string };
 
+/** A checked answer plus whether it was a second attempt at the same step; shared with the practice drill's own local feedback. */
+export type AnsweredResult = CheckResult & { retry: boolean; answer: string };
+
 export type PlayerState = {
   steps: Step[];
   queue: number[];
   retried: number[];
   phase: "answering" | "feedback" | "complete";
-  result: (CheckResult & { retry: boolean; answer: string }) | null;
+  result: AnsweredResult | null;
   done: number;
   xp: number;
   streak: number;
