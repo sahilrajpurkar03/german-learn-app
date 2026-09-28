@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireSnapshot } from "@/lib/learning/guard";
 import { reviewSubject } from "@/lib/course/catalog";
-import { planReview, reviewStepFor } from "@/lib/course/review";
+import { planReview, reviewStepFor, siblingExclusion } from "@/lib/course/review";
 import { REVIEW_LESSON_ID } from "@/lib/course/progress";
 import { customResolver } from "@/lib/learning/items";
 import { visibleStreak } from "@/lib/course/activity";
@@ -15,9 +15,10 @@ export default async function ReviewSessionPage({ searchParams }: { searchParams
   const { client, user, snapshot } = await requireSnapshot();
   const states = planReview(snapshot.memory, new Date(), 12, extra);
   const custom = await customResolver(client, user.id, states.map((state) => state.key));
+  const sessionKeys = states.map((state) => state.key);
   const steps = states.flatMap((state) => {
     const subject = reviewSubject(state.key, custom);
-    return subject ? [reviewStepFor(subject, state)] : [];
+    return subject ? [reviewStepFor(subject, state, siblingExclusion(subject, sessionKeys))] : [];
   });
   if (!steps.length) redirect("/review");
   const todayXp = snapshot.days.find((day) => day.date === snapshot.today)?.xp ?? 0;

@@ -19,14 +19,39 @@ const CRITICAL = new Set([
   "nicht", "im", "am", "zum", "zur", "vom", "beim",
 ]);
 
+// Speech recognition writes spoken numbers as digits ("zehn Uhr" comes back as "10:00 Uhr" or
+// "10 Uhr"), so a spoken answer must be able to match a written-out number and vice versa.
+const NUMBER_UNITS: Record<string, number> = { null: 0, eins: 1, ein: 1, eine: 1, zwei: 2, zwo: 2, drei: 3, vier: 4, fünf: 5, sechs: 6, sieben: 7, acht: 8, neun: 9 };
+const NUMBER_TEENS: Record<string, number> = { zehn: 10, elf: 11, zwölf: 12, dreizehn: 13, vierzehn: 14, fünfzehn: 15, sechzehn: 16, siebzehn: 17, achtzehn: 18, neunzehn: 19 };
+const NUMBER_TENS: Record<string, number> = { zwanzig: 20, dreißig: 30, vierzig: 40, fünfzig: 50, sechzig: 60, siebzig: 70, achtzig: 80, neunzig: 90 };
+const NUMBER_COMPOUND = /^(ein|eine|zwei|drei|vier|fünf|sechs|sieben|acht|neun)und(zwanzig|dreißig|vierzig|fünfzig|sechzig|siebzig|achtzig|neunzig)$/;
+
+function germanWordToNumber(word: string): number | null {
+  if (word === "hundert" || word === "einhundert") return 100;
+  if (word in NUMBER_TEENS) return NUMBER_TEENS[word];
+  if (word in NUMBER_TENS) return NUMBER_TENS[word];
+  if (word in NUMBER_UNITS) return NUMBER_UNITS[word];
+  const compound = NUMBER_COMPOUND.exec(word);
+  return compound ? NUMBER_UNITS[compound[1]] + NUMBER_TENS[compound[2]] : null;
+}
+
+/** "10:00" (on the hour, as speech recognition writes it) has no spoken "null" for the minutes,
+ * so it collapses to "10"; "10:30" becomes "10 30" to line up with "zehn Uhr dreißig". */
+function collapseClockTime(value: string): string {
+  return value.replace(/\b(\d{1,2}):(\d{2})\b/g, (_, hour: string, minute: string) => (minute === "00" ? hour : `${hour} ${minute}`));
+}
+
 export function normalize(value: string): string {
-  return value
+  return collapseClockTime(value)
     .normalize("NFC")
     .toLocaleLowerCase("de-DE")
     .replace(/[„“”"'’‚‘«»]/g, "")
     .replace(/[.,!?;:¿¡…–—-]/g, " ")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .split(" ")
+    .map((token) => { const number = germanWordToNumber(token); return number === null ? token : String(number); })
+    .join(" ");
 }
 
 export function foldUmlauts(value: string): string {

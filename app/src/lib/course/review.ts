@@ -37,7 +37,7 @@ export function reviewTypeFor(subject: ReviewSubject, state: Pick<MemoryState, "
   return { type: turn === 2 ? "dictation" : "type", variant: 0 };
 }
 
-export function buildReviewStep(subject: ReviewSubject, type: ExerciseType, variant = 0): Step | null {
+export function buildReviewStep(subject: ReviewSubject, type: ExerciseType, variant = 0, exclude: Set<string> = new Set()): Step | null {
   if (subject.kind === "pattern") {
     const drill = subject.pattern.drills[variant % Math.max(1, subject.pattern.drills.length)];
     return drill && type === "fill_gap" ? drillStep(reviewStepId(subject.pattern.id, type, variant), subject.pattern, drill) : null;
@@ -45,8 +45,8 @@ export function buildReviewStep(subject: ReviewSubject, type: ExerciseType, vari
   const { item, pool } = subject;
   const id = reviewStepId(item.id, type, variant);
   switch (type) {
-    case "choose": return chooseMeaning(id, item, pool);
-    case "listen_tap": return listenTap(id, item, pool);
+    case "choose": return chooseMeaning(id, item, pool, exclude);
+    case "listen_tap": return listenTap(id, item, pool, exclude);
     case "article": return articleStep(id, item);
     case "type": return typeStep(id, item);
     case "dictation": return dictationStep(id, item);
@@ -54,30 +54,37 @@ export function buildReviewStep(subject: ReviewSubject, type: ExerciseType, vari
     case "build": return buildStep(id, { de: item.de, en: item.en, alt: item.alt }, [item.id], pool);
     case "fill_gap": {
       if (!item.example) return null;
-      return gapStep(id, { de: item.example.de, en: item.example.en }, [item.id], [item], pool);
+      return gapStep(id, { de: item.example.de, en: item.example.en }, [item.id], [item], pool, exclude);
     }
     default: return null;
   }
 }
 
-export function reviewStepFor(subject: ReviewSubject, state: Pick<MemoryState, "strength" | "seen"> | undefined): Step {
+/** The other items due in the same session/drill: never usable as a wrong option, since they
+ * are themselves the correct answer to a different question the learner may also see. */
+export function siblingExclusion(subject: ReviewSubject, sessionKeys: readonly string[]): Set<string> {
+  if (subject.kind === "pattern") return new Set();
+  return new Set(sessionKeys.filter((key) => key !== subject.item.id));
+}
+
+export function reviewStepFor(subject: ReviewSubject, state: Pick<MemoryState, "strength" | "seen"> | undefined, exclude: Set<string> = new Set()): Step {
   const { type, variant } = reviewTypeFor(subject, state);
-  const step = buildReviewStep(subject, type, variant);
+  const step = buildReviewStep(subject, type, variant, exclude);
   if (step) return step;
   if (subject.kind === "pattern") return buildReviewStep(subject, "fill_gap", 0)!;
-  return buildReviewStep(subject, "choose", 0)!;
+  return buildReviewStep(subject, "choose", 0, exclude)!;
 }
 
 /** A plain word/verb flashcard: front, flip to check, never dressed up in a full example
  * sentence the way a review session or sentence drill would. */
-export function flashcardStepFor(subject: ReviewSubject, state: Pick<MemoryState, "strength" | "seen"> | undefined): Step {
+export function flashcardStepFor(subject: ReviewSubject, state: Pick<MemoryState, "strength" | "seen"> | undefined, exclude: Set<string> = new Set()): Step {
   const { type, variant } = reviewTypeFor(subject, state);
   const flashcardType = type === "fill_gap" || type === "build"
     ? subject.kind === "item" && subject.item.gender ? "article" : "listen_tap"
     : type;
-  const step = buildReviewStep(subject, flashcardType, variant);
+  const step = buildReviewStep(subject, flashcardType, variant, exclude);
   if (step) return step;
-  return buildReviewStep(subject, "choose", 0)!;
+  return buildReviewStep(subject, "choose", 0, exclude)!;
 }
 
 /** Due items first (oldest first), then items that keep slipping. Never pads with items that are not due unless asked. */

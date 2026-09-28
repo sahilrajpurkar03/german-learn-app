@@ -21,7 +21,10 @@ export const metadata: Metadata = {
   title: "Sprechen - Learn German",
   description: "Everyday German for life in Germany: short daily lessons, reviews that stick, and real conversations.",
   manifest: "/manifest.json",
-  icons: { icon: "/favicon.ico", apple: "/apple-touch-icon.png" },
+  // ?v=2 busts every layer that caches by URL (browser HTTP cache, the service worker, and
+  // Android's WebAPK icon, which only re-checks when a referenced icon URL actually changes) —
+  // bump it again whenever the icon artwork changes.
+  icons: { icon: "/favicon.ico?v=2", apple: "/apple-touch-icon.png?v=2" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

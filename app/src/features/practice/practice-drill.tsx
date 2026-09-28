@@ -7,7 +7,7 @@ import { checkAnswer, type CheckResult } from "@/lib/course/answer-check";
 import { reviewSubject } from "@/lib/course/catalog";
 import { applyGrade, gradeFor, introduce, type MemoryState } from "@/lib/course/memory";
 import { masteryLabel, masteryPercent, pickPracticeKey } from "@/lib/course/practice";
-import { flashcardStepFor, reviewStepFor } from "@/lib/course/review";
+import { flashcardStepFor, reviewStepFor, siblingExclusion } from "@/lib/course/review";
 import { REVIEW_LESSON_ID, type Attempt } from "@/lib/course/progress";
 import type { AnsweredResult } from "@/features/player/engine";
 import { stopAudio } from "@/features/player/audio";
@@ -55,9 +55,12 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
     const subject = reviewSubject(picked.key);
     if (!subject) { setCurrentKey(null); setStep(null); return; }
     const build = kind === "vocabulary" ? flashcardStepFor : reviewStepFor;
+    // Never offer a recently-seen item's real answer as a wrong option here — it's easy to
+    // spot as "the other question's answer" rather than something that needs recognising.
+    const exclude = siblingExclusion(subject, history.current);
     setCurrentKey(picked.key);
     setCurrentStrength(picked.strength);
-    setStep(build(subject, { strength: picked.strength, seen: 1 }));
+    setStep(build(subject, { strength: picked.strength, seen: 1 }, exclude));
     setRound((current) => current + 1);
     setPending(null);
     setResult(null);
