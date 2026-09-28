@@ -68,6 +68,18 @@ export function reviewStepFor(subject: ReviewSubject, state: Pick<MemoryState, "
   return buildReviewStep(subject, "choose", 0)!;
 }
 
+/** A plain word/verb flashcard: front, flip to check, never dressed up in a full example
+ * sentence the way a review session or sentence drill would. */
+export function flashcardStepFor(subject: ReviewSubject, state: Pick<MemoryState, "strength" | "seen"> | undefined): Step {
+  const { type, variant } = reviewTypeFor(subject, state);
+  const flashcardType = type === "fill_gap" || type === "build"
+    ? subject.kind === "item" && subject.item.gender ? "article" : "listen_tap"
+    : type;
+  const step = buildReviewStep(subject, flashcardType, variant);
+  if (step) return step;
+  return buildReviewStep(subject, "choose", 0)!;
+}
+
 /** Due items first (oldest first), then items that keep slipping. Never pads with items that are not due unless asked. */
 export function planReview(states: MemoryState[], now: Date, limit = REVIEW_SESSION_SIZE, extra = false): MemoryState[] {
   const due = states.filter((state) => new Date(state.dueAt) <= now).sort((left, right) => Date.parse(left.dueAt) - Date.parse(right.dueAt) || right.lapses - left.lapses);

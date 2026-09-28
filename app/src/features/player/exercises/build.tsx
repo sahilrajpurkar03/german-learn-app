@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, m } from "motion/react";
-import { GripVertical, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { playEffect } from "../feedback-fx";
 import { Prompt, SpeakButton, type ExerciseProps } from "./shared";
 
@@ -90,8 +90,8 @@ export function BuildExercise({ step, disabled, onReady, onSpeaking }: ExerciseP
               onKeyDown={(event) => onKey(event, index)}
               aria-label={`${tiles[index]}, word ${position + 1} of ${chosen.length}. Drag or use arrow keys to move, press Delete to remove.`}
               style={{ touchAction: "none" }}
-              className="relative inline-flex min-h-12 cursor-grab items-center gap-1 rounded-xl border-2 border-line bg-surface py-2 pl-2 pr-3.5 text-lg font-medium shadow-[0_3px_0_var(--v2-line)] active:cursor-grabbing">
-              <GripVertical size={14} className="text-ink-soft/60" aria-hidden="true" />{tiles[index]}
+              className="relative inline-flex min-h-12 cursor-grab items-center rounded-xl border-2 border-line bg-surface px-3.5 py-2 text-lg font-medium shadow-[0_3px_0_var(--v2-line)] active:cursor-grabbing">
+              {tiles[index]}
             </m.button>
           ))}
         </AnimatePresence>

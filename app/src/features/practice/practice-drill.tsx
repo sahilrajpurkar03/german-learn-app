@@ -7,7 +7,7 @@ import { checkAnswer, type CheckResult } from "@/lib/course/answer-check";
 import { reviewSubject } from "@/lib/course/catalog";
 import { applyGrade, gradeFor, introduce, type MemoryState } from "@/lib/course/memory";
 import { masteryLabel, masteryPercent, pickPracticeKey } from "@/lib/course/practice";
-import { reviewStepFor } from "@/lib/course/review";
+import { flashcardStepFor, reviewStepFor } from "@/lib/course/review";
 import { REVIEW_LESSON_ID, type Attempt } from "@/lib/course/progress";
 import type { AnsweredResult } from "@/features/player/engine";
 import { stopAudio } from "@/features/player/audio";
@@ -32,6 +32,10 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
 
   const [currentKey, setCurrentKey] = useState<string | null>(null);
   const [currentStrength, setCurrentStrength] = useState(0);
+  // Bumped on every draw so the Exercise remounts even when the same item (and so the same
+  // step id) comes up twice in a row — otherwise its internal answer state goes stale and the
+  // Check button never re-arms after the first question.
+  const [round, setRound] = useState(0);
   const [step, setStep] = useState<ReturnType<typeof reviewStepFor> | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [result, setResult] = useState<AnsweredResult | null>(null);
@@ -50,9 +54,11 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
     if (!picked) { setCurrentKey(null); setStep(null); return; }
     const subject = reviewSubject(picked.key);
     if (!subject) { setCurrentKey(null); setStep(null); return; }
+    const build = kind === "vocabulary" ? flashcardStepFor : reviewStepFor;
     setCurrentKey(picked.key);
     setCurrentStrength(picked.strength);
-    setStep(reviewStepFor(subject, { strength: picked.strength, seen: 1 }));
+    setStep(build(subject, { strength: picked.strength, seen: 1 }));
+    setRound((current) => current + 1);
     setPending(null);
     setResult(null);
   }
@@ -149,7 +155,7 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
 
       <form onSubmit={(event) => { event.preventDefault(); if (!result && pending !== null) submit(pending); }}>
         <AnimatePresence mode="wait" initial={false}>
-          <m.div key={step.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.18 }}
+          <m.div key={`${step.id}:${round}`} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.18 }}
             className="rounded-3xl bg-surface p-5 shadow-[var(--shadow-card)]">
             <Exercise step={step} disabled={Boolean(result)} revealed={Boolean(result)} onReady={setPending} onSubmit={submit} />
           </m.div>
