@@ -169,7 +169,9 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
       </form>
       <AnimatePresence>
         {result && (
-          <div className="fixed inset-x-0 bottom-0 z-20">
+          /* Unlike the full-screen lesson Player, this drill lives inside the tab layout, so the
+             sheet must clear the fixed bottom tab bar (z-30) instead of sitting under it. */
+          <div className="fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 md:bottom-0">
             <FeedbackSheet step={step} result={result} onContinue={next} />
           </div>
         )}
