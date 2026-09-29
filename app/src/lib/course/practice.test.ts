@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { masteryLabel, masteryPercent, pickPracticeKey, practiceWeight } from "./practice.ts";
+import { masteryLabel, masteryPercent, pickPracticeKey, practiceWeight, recentWindow } from "./practice.ts";
 
 function sequence(values: number[]): () => number {
   let index = 0;
@@ -31,6 +31,20 @@ test("weaker items are drawn far more often than strong ones, over many draws", 
   for (let draw = 0; draw < 1000; draw++) counts[pickPracticeKey(pool, [], random)!.key as "weak" | "strong"] += 1;
   assert.ok(counts.weak > counts.strong * 5, JSON.stringify(counts));
   assert.ok(counts.strong > 0, "a mastered word still turns up sometimes");
+});
+
+test("a big pool holds back most of it before repeating, so new words don't feel far off", () => {
+  assert.equal(recentWindow(3), 2, "matches the old always-avoid-last-2 behaviour for small pools");
+  assert.equal(recentWindow(2), 1);
+  assert.equal(recentWindow(20), 12);
+  assert.equal(recentWindow(50), 15, "capped so it stays cheap and leaves enough to weight-pick from");
+  const pool = Array.from({ length: 20 }, (_, index) => ({ key: `w${index}`, strength: 0 }));
+  const history: string[] = [];
+  for (let draw = 0; draw < 60; draw++) {
+    const picked = pickPracticeKey(pool, history, () => (draw * 0.37) % 1)!;
+    assert.ok(!history.slice(-recentWindow(pool.length)).includes(picked.key), `repeated too soon: ${picked.key} in ${JSON.stringify(history.slice(-12))}`);
+    history.push(picked.key);
+  }
 });
 
 test("weight and mastery are readable numbers for the UI", () => {

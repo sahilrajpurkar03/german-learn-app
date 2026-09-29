@@ -1,7 +1,8 @@
 // Picks the next item for open-ended flashcard/sentence practice (Course → Vocabulary/Sentences).
 // Unlike planReview (a fixed-size session of due items), this never runs out: it keeps drawing
 // from everything the learner has already met, leaning toward whatever is weakest so far, and
-// never repeats the last couple of items in a row.
+// avoids a large recent slice of the pool so a bigger vocabulary spreads out before anything
+// repeats, instead of the same handful of words crowding out the rest.
 
 export type PracticeCandidate = { key: string; strength: number };
 
@@ -10,9 +11,16 @@ export function practiceWeight(strength: number): number {
   return Math.max(0.08, 1 - strength);
 }
 
+/** How many recently-shown items to hold back before repeating one: most of the pool for a
+ * small set (so nothing repeats until you've cycled through), tapering off for a big one (so
+ * there's still enough left to weight-pick from), capped so it stays cheap either way. */
+export function recentWindow(poolSize: number): number {
+  return Math.max(0, Math.min(poolSize - 1, 15, Math.ceil(poolSize * 0.6)));
+}
+
 export function pickPracticeKey<T extends PracticeCandidate>(pool: readonly T[], recent: readonly string[], random: () => number = Math.random): T | null {
   if (!pool.length) return null;
-  const avoid = new Set(recent.slice(-Math.min(2, pool.length - 1)));
+  const avoid = new Set(recent.slice(-recentWindow(pool.length)));
   const eligible = pool.filter((candidate) => !avoid.has(candidate.key));
   const choices = eligible.length ? eligible : pool;
   const weights = choices.map((candidate) => practiceWeight(candidate.strength));

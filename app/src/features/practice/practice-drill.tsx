@@ -111,7 +111,9 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
 
   function next() {
     stopAudio();
-    if (currentKey) history.current = [...history.current.slice(-4), currentKey];
+    // Keeps enough history for pickPracticeKey's recentWindow (up to 15) to actually hold back
+    // a large chunk of a big pool, not just the last couple of items.
+    if (currentKey) history.current = [...history.current.slice(-19), currentKey];
     draw();
   }
 
