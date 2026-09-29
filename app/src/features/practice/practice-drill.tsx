@@ -5,7 +5,7 @@ import { AnimatePresence, m } from "motion/react";
 import { Flame, Sparkles, Target, X } from "lucide-react";
 import { checkAnswer, type CheckResult } from "@/lib/course/answer-check";
 import { reviewSubject } from "@/lib/course/catalog";
-import { applyGrade, gradeFor, introduce, type MemoryState } from "@/lib/course/memory";
+import { applyGrade, gradeFor, type MemoryState } from "@/lib/course/memory";
 import { masteryLabel, masteryPercent, pickPracticeKey } from "@/lib/course/practice";
 import { flashcardStepFor, reviewStepFor, siblingExclusion } from "@/lib/course/review";
 import { REVIEW_LESSON_ID, type Attempt } from "@/lib/course/progress";
@@ -24,7 +24,13 @@ const now = () => new Date();
  * never ends on its own — it keeps drawing from everything the learner has met, leaning toward
  * whatever is weakest, until they choose to stop. */
 export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "vocabulary" | "sentence"; items: PracticeItem[]; emptyHref: string; emptyLabel: string }) {
-  const memory = useRef(new Map(items.map((item) => [item.key, item.strength])));
+  // The full local SRS state, not just strength — carrying it forward (rather than rebuilding a
+  // fresh "never practised" state on every answer) is what lets repeated correct answers in the
+  // same sitting actually raise a word's strength instead of it feeling stuck at "New" forever.
+  const memory = useRef(new Map<string, MemoryState>(items.map((item) => {
+    const at = now().toISOString();
+    return [item.key, { key: item.key, ease: 2.5, intervalDays: 0, repetitions: item.strength > 0 ? 1 : 0, dueAt: at, strength: item.strength, lapses: 0, seen: 1, correct: 0, introducedAt: at, lastSeenAt: at }];
+  })));
   const history = useRef<string[]>([]);
   const runId = useRef(crypto.randomUUID());
   const shownAt = useRef(0);
@@ -49,7 +55,7 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
   }, [step?.id]);
 
   function draw() {
-    const candidates = pool.map((item) => ({ key: item.key, strength: memory.current.get(item.key) ?? item.strength }));
+    const candidates = pool.map((item) => ({ key: item.key, strength: memory.current.get(item.key)?.strength ?? item.strength }));
     const picked = pickPracticeKey(candidates, history.current);
     if (!picked) { setCurrentKey(null); setStep(null); return; }
     const subject = reviewSubject(picked.key);
@@ -90,11 +96,9 @@ export function PracticeDrill({ kind, items, emptyHref, emptyLabel }: { kind: "v
     playEffect(outcome.verdict === "correct" ? "correct" : outcome.verdict === "close" ? "close" : outcome.verdict === "wrong" ? "wrong" : "tap");
 
     const grade = gradeFor(outcome.verdict, step.type, false);
-    const previousStrength = memory.current.get(currentKey) ?? 0;
     if (grade !== null) {
-      const previous: MemoryState = { key: currentKey, ease: 2.5, intervalDays: 0, repetitions: 0, dueAt: now().toISOString(), strength: previousStrength, lapses: 0, seen: 1, correct: 0, introducedAt: now().toISOString(), lastSeenAt: now().toISOString() };
-      const next = previousStrength > 0 || grade >= 3 ? applyGrade(previous, currentKey, grade, now()) : introduce(currentKey, now());
-      memory.current.set(currentKey, next.strength);
+      const previous = memory.current.get(currentKey);
+      memory.current.set(currentKey, applyGrade(previous, currentKey, grade, now()));
     }
     const good = outcome.verdict === "correct" || outcome.verdict === "close";
     setStats((current) => {

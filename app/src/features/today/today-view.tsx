@@ -21,9 +21,8 @@ export type TodayHero = {
   resume?: boolean;
 };
 
-export function TodayView({ name, greeting, streak, freezes, todayXp, goalXp, hero, secondary, week, notice }: {
+export function TodayView({ name, streak, freezes, todayXp, goalXp, hero, secondary, week, notice }: {
   name: string;
-  greeting: string;
   streak: number;
   freezes: number;
   todayXp: number;
@@ -35,14 +34,11 @@ export function TodayView({ name, greeting, streak, freezes, todayXp, goalXp, he
 }) {
   const goalMet = todayXp >= goalXp;
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] md:pt-10">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="md:hidden"><Logo size={34} withName={false} /></span>
-          <div>
-            <p className="text-sm font-semibold text-ink-soft">{greeting},</p>
-            <h1 className="font-display text-2xl font-semibold leading-tight">{name}</h1>
-          </div>
+          <h1 className="font-display text-2xl font-semibold leading-tight">{name}</h1>
         </div>
         <div className="flex items-center gap-3">
           <StreakBadge days={streak} />

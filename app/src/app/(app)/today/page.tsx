@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { displayName, requireSnapshot } from "@/lib/learning/guard";
 import { catalog, coursePath, getOutline } from "@/lib/course/catalog";
 import { nextAction, nextLesson, type CourseState } from "@/lib/course/next-action";
-import { localHour, visibleStreak, weekStrip } from "@/lib/course/activity";
+import { visibleStreak, weekStrip } from "@/lib/course/activity";
 import { TodayView, type TodayHero } from "@/features/today/today-view";
 
 export const metadata: Metadata = { title: "Today · Sprechen" };
@@ -48,12 +48,10 @@ export default async function TodayPage() {
     if (upcoming) secondary = { href: `/lesson/${upcoming.id}`, label: `Next: ${upcoming.title}`, detail: "Your next lesson is ready after the review." };
   }
 
-  const hour = localHour(now, snapshot.settings.timezone);
-  const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
   const todayXp = snapshot.days.find((day) => day.date === snapshot.today)?.xp ?? 0;
   return (
     <TodayView
-      name={name} greeting={greeting}
+      name={name}
       streak={visibleStreak(snapshot.stats, snapshot.today)} freezes={snapshot.stats.freezes}
       todayXp={todayXp} goalXp={snapshot.settings.daily_goal_xp}
       hero={hero} secondary={secondary} week={weekStrip(snapshot.days, snapshot.today)}
